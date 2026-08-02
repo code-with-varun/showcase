@@ -5,7 +5,8 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   let catalogData = {
-    cdnBaseUrl: "https://code-with-varun.github.io/showcase",
+    // Dynamically compute CDN base URL from current window location (GitHub Pages or Custom Domain)
+    cdnBaseUrl: window.location.origin + window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, ''),
     rawBaseUrl: "https://raw.githubusercontent.com/code-with-varun/showcase/main",
     stats: { totalFiles: 0, totalSizeFormatted: "0 Bytes", categoriesCount: {} },
     assets: []
@@ -48,6 +49,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function initApp() {
+    const currentOrigin = window.location.origin + window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
+    catalogData.cdnBaseUrl = catalogData.cdnBaseUrl || currentOrigin;
     updateStats();
     renderCategoryPills();
     renderAssets();
