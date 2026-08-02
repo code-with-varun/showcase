@@ -1,15 +1,15 @@
 {
-  "updatedAt": "2026-08-02T04:24:57.053Z",
+  "updatedAt": "2026-08-02T04:29:27.270Z",
   "cdnBaseUrl": "https://code-with-varun.github.io/showcase",
   "rawBaseUrl": "https://raw.githubusercontent.com/code-with-varun/showcase/main",
   "stats": {
-    "totalFiles": 6,
-    "totalSizeBytes": 8142827,
-    "totalSizeFormatted": "7.77 MB",
+    "totalFiles": 17,
+    "totalSizeBytes": 11222555,
+    "totalSizeFormatted": "10.7 MB",
     "categoriesCount": {
       "motion-comics": 1,
       "videos": 0,
-      "images": 3,
+      "images": 14,
       "audio": 0,
       "documents": 0,
       "archives": 2,
@@ -72,6 +72,96 @@
       "description": "Archived CDN asset: screencapture-localhost-3000-2026-07-31-19_44_13.png"
     },
     {
+      "id": "images-scripvault-screencapture-localhost-3000-ask-2026-07-31-19-50-32-png",
+      "title": "Screencapture Localhost 3000 Ask 2026 07 31 19 50 32",
+      "filename": "screencapture-localhost-3000-ask-2026-07-31-19_50_32.png",
+      "path": "assets/images/scripvault/screencapture-localhost-3000-ask-2026-07-31-19_50_32.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 192745,
+      "sizeFormatted": "188.23 KB",
+      "updatedAt": "2026-07-31T14:20:40.934Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Scripvault"
+      ],
+      "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-ask-2026-07-31-19_50_32.png",
+      "description": "Archived CDN asset: screencapture-localhost-3000-ask-2026-07-31-19_50_32.png"
+    },
+    {
+      "id": "images-scripvault-screencapture-localhost-3000-dashboard-2026-07-31-19-45-31-png",
+      "title": "Screencapture Localhost 3000 Dashboard 2026 07 31 19 45 31",
+      "filename": "screencapture-localhost-3000-dashboard-2026-07-31-19_45_31.png",
+      "path": "assets/images/scripvault/screencapture-localhost-3000-dashboard-2026-07-31-19_45_31.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 644787,
+      "sizeFormatted": "629.67 KB",
+      "updatedAt": "2026-07-31T14:15:40.407Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Scripvault"
+      ],
+      "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-dashboard-2026-07-31-19_45_31.png",
+      "description": "Archived CDN asset: screencapture-localhost-3000-dashboard-2026-07-31-19_45_31.png"
+    },
+    {
+      "id": "images-scripvault-screencapture-localhost-3000-explore-2026-07-31-19-45-47-png",
+      "title": "Screencapture Localhost 3000 Explore 2026 07 31 19 45 47",
+      "filename": "screencapture-localhost-3000-explore-2026-07-31-19_45_47.png",
+      "path": "assets/images/scripvault/screencapture-localhost-3000-explore-2026-07-31-19_45_47.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 335274,
+      "sizeFormatted": "327.42 KB",
+      "updatedAt": "2026-07-31T14:15:55.403Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Scripvault"
+      ],
+      "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-explore-2026-07-31-19_45_47.png",
+      "description": "Archived CDN asset: screencapture-localhost-3000-explore-2026-07-31-19_45_47.png"
+    },
+    {
+      "id": "images-scripvault-screencapture-localhost-3000-explore-2026-07-31-19-46-22-png",
+      "title": "Screencapture Localhost 3000 Explore 2026 07 31 19 46 22",
+      "filename": "screencapture-localhost-3000-explore-2026-07-31-19_46_22.png",
+      "path": "assets/images/scripvault/screencapture-localhost-3000-explore-2026-07-31-19_46_22.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 319743,
+      "sizeFormatted": "312.25 KB",
+      "updatedAt": "2026-07-31T14:16:31.808Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Scripvault"
+      ],
+      "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-explore-2026-07-31-19_46_22.png",
+      "description": "Archived CDN asset: screencapture-localhost-3000-explore-2026-07-31-19_46_22.png"
+    },
+    {
+      "id": "images-scripvault-screencapture-localhost-3000-investments-2026-07-31-19-46-53-png",
+      "title": "Screencapture Localhost 3000 Investments 2026 07 31 19 46 53",
+      "filename": "screencapture-localhost-3000-investments-2026-07-31-19_46_53.png",
+      "path": "assets/images/scripvault/screencapture-localhost-3000-investments-2026-07-31-19_46_53.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 203471,
+      "sizeFormatted": "198.7 KB",
+      "updatedAt": "2026-07-31T14:17:02.106Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Scripvault"
+      ],
+      "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-investments-2026-07-31-19_46_53.png",
+      "description": "Archived CDN asset: screencapture-localhost-3000-investments-2026-07-31-19_46_53.png"
+    },
+    {
       "id": "images-scripvault-screencapture-localhost-3000-login-2026-07-31-19-44-47-png",
       "title": "Screencapture Localhost 3000 Login 2026 07 31 19 44 47",
       "filename": "screencapture-localhost-3000-login-2026-07-31-19_44_47.png",
@@ -88,6 +178,114 @@
       ],
       "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-login-2026-07-31-19_44_47.png",
       "description": "Archived CDN asset: screencapture-localhost-3000-login-2026-07-31-19_44_47.png"
+    },
+    {
+      "id": "images-scripvault-screencapture-localhost-3000-profile-2026-07-31-19-50-46-png",
+      "title": "Screencapture Localhost 3000 Profile 2026 07 31 19 50 46",
+      "filename": "screencapture-localhost-3000-profile-2026-07-31-19_50_46.png",
+      "path": "assets/images/scripvault/screencapture-localhost-3000-profile-2026-07-31-19_50_46.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 294377,
+      "sizeFormatted": "287.48 KB",
+      "updatedAt": "2026-07-31T14:21:12.176Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Scripvault"
+      ],
+      "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-profile-2026-07-31-19_50_46.png",
+      "description": "Archived CDN asset: screencapture-localhost-3000-profile-2026-07-31-19_50_46.png"
+    },
+    {
+      "id": "images-scripvault-screencapture-localhost-3000-signup-2026-07-31-19-45-00-png",
+      "title": "Screencapture Localhost 3000 Signup 2026 07 31 19 45 00",
+      "filename": "screencapture-localhost-3000-signup-2026-07-31-19_45_00.png",
+      "path": "assets/images/scripvault/screencapture-localhost-3000-signup-2026-07-31-19_45_00.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 221425,
+      "sizeFormatted": "216.24 KB",
+      "updatedAt": "2026-07-31T14:15:08.968Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Scripvault"
+      ],
+      "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-signup-2026-07-31-19_45_00.png",
+      "description": "Archived CDN asset: screencapture-localhost-3000-signup-2026-07-31-19_45_00.png"
+    },
+    {
+      "id": "images-scripvault-screencapture-localhost-3000-transactions-2026-07-31-19-47-10-png",
+      "title": "Screencapture Localhost 3000 Transactions 2026 07 31 19 47 10",
+      "filename": "screencapture-localhost-3000-transactions-2026-07-31-19_47_10.png",
+      "path": "assets/images/scripvault/screencapture-localhost-3000-transactions-2026-07-31-19_47_10.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 234539,
+      "sizeFormatted": "229.04 KB",
+      "updatedAt": "2026-07-31T14:17:17.682Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Scripvault"
+      ],
+      "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-transactions-2026-07-31-19_47_10.png",
+      "description": "Archived CDN asset: screencapture-localhost-3000-transactions-2026-07-31-19_47_10.png"
+    },
+    {
+      "id": "images-scripvault-screencapture-localhost-3000-transactions-2026-07-31-19-47-22-png",
+      "title": "Screencapture Localhost 3000 Transactions 2026 07 31 19 47 22",
+      "filename": "screencapture-localhost-3000-transactions-2026-07-31-19_47_22.png",
+      "path": "assets/images/scripvault/screencapture-localhost-3000-transactions-2026-07-31-19_47_22.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 197617,
+      "sizeFormatted": "192.99 KB",
+      "updatedAt": "2026-07-31T14:17:46.741Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Scripvault"
+      ],
+      "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-transactions-2026-07-31-19_47_22.png",
+      "description": "Archived CDN asset: screencapture-localhost-3000-transactions-2026-07-31-19_47_22.png"
+    },
+    {
+      "id": "images-scripvault-screencapture-localhost-3000-transactions-2026-07-31-19-47-37-png",
+      "title": "Screencapture Localhost 3000 Transactions 2026 07 31 19 47 37",
+      "filename": "screencapture-localhost-3000-transactions-2026-07-31-19_47_37.png",
+      "path": "assets/images/scripvault/screencapture-localhost-3000-transactions-2026-07-31-19_47_37.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 172026,
+      "sizeFormatted": "167.99 KB",
+      "updatedAt": "2026-07-31T14:17:51.489Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Scripvault"
+      ],
+      "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-transactions-2026-07-31-19_47_37.png",
+      "description": "Archived CDN asset: screencapture-localhost-3000-transactions-2026-07-31-19_47_37.png"
+    },
+    {
+      "id": "images-scripvault-screencapture-localhost-3000-watchlist-2026-07-31-19-46-38-png",
+      "title": "Screencapture Localhost 3000 Watchlist 2026 07 31 19 46 38",
+      "filename": "screencapture-localhost-3000-watchlist-2026-07-31-19_46_38.png",
+      "path": "assets/images/scripvault/screencapture-localhost-3000-watchlist-2026-07-31-19_46_38.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 263724,
+      "sizeFormatted": "257.54 KB",
+      "updatedAt": "2026-07-31T14:16:47.776Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Scripvault"
+      ],
+      "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-watchlist-2026-07-31-19_46_38.png",
+      "description": "Archived CDN asset: screencapture-localhost-3000-watchlist-2026-07-31-19_46_38.png"
     },
     {
       "id": "images-shadow-realm-sorcerer-png",
