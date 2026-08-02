@@ -1,15 +1,15 @@
 {
-  "updatedAt": "2026-08-02T04:11:57.457Z",
+  "updatedAt": "2026-08-02T04:24:57.053Z",
   "cdnBaseUrl": "https://code-with-varun.github.io/showcase",
   "rawBaseUrl": "https://raw.githubusercontent.com/code-with-varun/showcase/main",
   "stats": {
-    "totalFiles": 4,
-    "totalSizeBytes": 6087106,
-    "totalSizeFormatted": "5.81 MB",
+    "totalFiles": 6,
+    "totalSizeBytes": 8142827,
+    "totalSizeFormatted": "7.77 MB",
     "categoriesCount": {
       "motion-comics": 1,
       "videos": 0,
-      "images": 1,
+      "images": 3,
       "audio": 0,
       "documents": 0,
       "archives": 2,
@@ -52,6 +52,42 @@
         "Archives/varun Akshay Executive Portfolio 2026.zip"
       ],
       "description": "Archived asset: varun-akshay-executive-portfolio 2026.zip"
+    },
+    {
+      "id": "images-scripvault-screencapture-localhost-3000-2026-07-31-19-44-13-png",
+      "title": "Screencapture Localhost 3000 2026 07 31 19 44 13",
+      "filename": "screencapture-localhost-3000-2026-07-31-19_44_13.png",
+      "path": "assets/images/scripvault/screencapture-localhost-3000-2026-07-31-19_44_13.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 1915334,
+      "sizeFormatted": "1.83 MB",
+      "updatedAt": "2026-07-31T14:14:36.312Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Scripvault"
+      ],
+      "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-2026-07-31-19_44_13.png",
+      "description": "Archived CDN asset: screencapture-localhost-3000-2026-07-31-19_44_13.png"
+    },
+    {
+      "id": "images-scripvault-screencapture-localhost-3000-login-2026-07-31-19-44-47-png",
+      "title": "Screencapture Localhost 3000 Login 2026 07 31 19 44 47",
+      "filename": "screencapture-localhost-3000-login-2026-07-31-19_44_47.png",
+      "path": "assets/images/scripvault/screencapture-localhost-3000-login-2026-07-31-19_44_47.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 140387,
+      "sizeFormatted": "137.1 KB",
+      "updatedAt": "2026-07-31T14:14:54.080Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Scripvault"
+      ],
+      "thumbnail": "assets/images/scripvault/screencapture-localhost-3000-login-2026-07-31-19_44_47.png",
+      "description": "Archived CDN asset: screencapture-localhost-3000-login-2026-07-31-19_44_47.png"
     },
     {
       "id": "images-shadow-realm-sorcerer-png",
