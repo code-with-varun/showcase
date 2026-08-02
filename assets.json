@@ -1,0 +1,95 @@
+{
+  "updatedAt": "2026-08-02T04:11:57.457Z",
+  "cdnBaseUrl": "https://code-with-varun.github.io/showcase",
+  "rawBaseUrl": "https://raw.githubusercontent.com/code-with-varun/showcase/main",
+  "stats": {
+    "totalFiles": 4,
+    "totalSizeBytes": 6087106,
+    "totalSizeFormatted": "5.81 MB",
+    "categoriesCount": {
+      "motion-comics": 1,
+      "videos": 0,
+      "images": 1,
+      "audio": 0,
+      "documents": 0,
+      "archives": 2,
+      "other": 0
+    }
+  },
+  "assets": [
+    {
+      "id": "archives-dist-zip",
+      "title": "Dist",
+      "filename": "dist.zip",
+      "path": "assets/archives/dist.zip",
+      "category": "archives",
+      "extension": "zip",
+      "sizeBytes": 262581,
+      "sizeFormatted": "256.43 KB",
+      "updatedAt": "2026-07-29T04:35:07.210Z",
+      "tags": [
+        "ZIP",
+        "Archive",
+        "Bundle",
+        "Archives/dist.zip"
+      ],
+      "description": "Archived asset: dist.zip"
+    },
+    {
+      "id": "archives-varun-akshay-executive-portfolio-2026-zip",
+      "title": "Varun Akshay Executive Portfolio 2026",
+      "filename": "varun-akshay-executive-portfolio 2026.zip",
+      "path": "assets/archives/varun-akshay-executive-portfolio 2026.zip",
+      "category": "archives",
+      "extension": "zip",
+      "sizeBytes": 3415190,
+      "sizeFormatted": "3.26 MB",
+      "updatedAt": "2026-07-29T04:57:46.022Z",
+      "tags": [
+        "ZIP",
+        "Archive",
+        "Bundle",
+        "Archives/varun Akshay Executive Portfolio 2026.zip"
+      ],
+      "description": "Archived asset: varun-akshay-executive-portfolio 2026.zip"
+    },
+    {
+      "id": "images-shadow-realm-sorcerer-png",
+      "title": "Shadow Realm Sorcerer",
+      "filename": "shadow-realm-sorcerer.png",
+      "path": "assets/images/shadow-realm-sorcerer.png",
+      "category": "images",
+      "extension": "png",
+      "sizeBytes": 1133035,
+      "sizeFormatted": "1.08 MB",
+      "updatedAt": "2026-08-02T04:10:52.802Z",
+      "tags": [
+        "PNG",
+        "Image",
+        "Images/shadow Realm Sorcerer.png"
+      ],
+      "thumbnail": "assets/images/shadow-realm-sorcerer.png",
+      "description": "Archived asset: shadow-realm-sorcerer.png"
+    },
+    {
+      "id": "motion-comics-cyber-guardian-cover-png",
+      "title": "Cyber Guardian Cover",
+      "filename": "cyber-guardian-cover.png",
+      "path": "assets/motion-comics/cyber-guardian-cover.png",
+      "category": "motion-comics",
+      "extension": "png",
+      "sizeBytes": 1276300,
+      "sizeFormatted": "1.22 MB",
+      "updatedAt": "2026-08-02T04:10:36.635Z",
+      "tags": [
+        "PNG",
+        "Motion Comic",
+        "AI Art",
+        "Graphic",
+        "Motion Comics/cyber Guardian Cover.png"
+      ],
+      "thumbnail": "assets/motion-comics/cyber-guardian-cover.png",
+      "description": "Archived asset: cyber-guardian-cover.png"
+    }
+  ]
+}

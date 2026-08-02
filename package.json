@@ -1,0 +1,19 @@
+{
+  "name": "showcase-cdn",
+  "version": "1.0.0",
+  "description": "GitHub Pages CDN & Archive Library for AI Motion Comics and Media Assets",
+  "main": "index.html",
+  "scripts": {
+    "update-catalog": "node scripts/update-catalog.js",
+    "start": "npx -y serve ."
+  },
+  "keywords": [
+    "cdn",
+    "motion-comics",
+    "ai-art",
+    "media-archive",
+    "github-pages"
+  ],
+  "author": "Varun",
+  "license": "MIT"
+}
