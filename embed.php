@@ -14,8 +14,8 @@ if (!$assetId) {
     die("Asset parameter required.");
 }
 
-$stmt = $pdo->prepare("SELECT * FROM assets WHERE id = :id OR slug = :id LIMIT 1");
-$stmt->execute([':id' => $assetId]);
+$stmt = $pdo->prepare("SELECT * FROM assets WHERE id = :id OR slug = :slug LIMIT 1");
+$stmt->execute([':id' => $assetId, ':slug' => $assetId]);
 $asset = $stmt->fetch();
 
 if (!$asset) {

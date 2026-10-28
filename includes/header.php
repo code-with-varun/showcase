@@ -44,9 +44,9 @@ $activePage = basename($_SERVER['PHP_SELF'], '.php');
     </div>
 
     <!-- Center Search Bar -->
-    <div class="yt-search-container d-none d-md-block">
-      <form action="<?= $baseUrl ?>/index.php" method="GET" class="yt-search-group">
-        <input type="text" name="q" class="form-control yt-search-input" placeholder="Search videos, images, documents, comics..." value="<?= h($searchQuery) ?>" aria-label="Search">
+    <div class="yt-search-container mx-2 mx-sm-4 flex-grow-1 d-flex justify-content-center">
+      <form action="<?= $baseUrl ?>/index.php" method="GET" class="yt-search-group w-100" style="max-width: 550px;">
+        <input type="text" name="q" class="form-control yt-search-input" placeholder="Search videos, images, documents..." value="<?= h($searchQuery) ?>" aria-label="Search">
         <?php if (!empty($_GET['type'])): ?>
           <input type="hidden" name="type" value="<?= h($_GET['type']) ?>">
         <?php endif; ?>

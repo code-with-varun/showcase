@@ -21,10 +21,10 @@ $stmt = $pdo->prepare("
     SELECT a.*, c.name AS category_name, c.slug AS category_slug 
     FROM assets a 
     LEFT JOIN categories c ON a.category_id = c.id 
-    WHERE a.id = :id OR a.slug = :id 
+    WHERE a.id = :id OR a.slug = :slug 
     LIMIT 1
 ");
-$stmt->execute([':id' => $assetId]);
+$stmt->execute([':id' => $assetId, ':slug' => $assetId]);
 $asset = $stmt->fetch();
 
 if (!$asset) {
