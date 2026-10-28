@@ -38,6 +38,7 @@ class YTPlayer {
     this.video.addEventListener('timeupdate', () => this.onTimeUpdate());
     this.video.addEventListener('progress', () => this.onBufferProgress());
     this.video.addEventListener('loadedmetadata', () => this.onMetadataLoaded());
+    this.video.addEventListener('ended', () => this.onVideoEnded());
 
     // Controls
     if (this.playBtn) this.playBtn.addEventListener('click', () => this.togglePlay());
@@ -106,7 +107,60 @@ class YTPlayer {
       }
     }
     if (params.get('autoplay') === '1') {
-      this.video.play().catch(() => {});
+      this.video.play().catch(() => {
+        this.video.muted = true;
+        this.video.play().catch(() => {});
+      });
+    }
+
+    this.initAutoplay();
+  }
+
+  initAutoplay() {
+    const autoplayToggle = document.getElementById('autoplayToggle');
+    if (autoplayToggle) {
+      const saved = localStorage.getItem('yt_autoplay');
+      if (saved !== null) {
+        autoplayToggle.checked = (saved === 'true');
+      }
+      autoplayToggle.addEventListener('change', () => {
+        localStorage.setItem('yt_autoplay', autoplayToggle.checked);
+      });
+    }
+  }
+
+  onVideoEnded() {
+    const autoplayToggle = document.getElementById('autoplayToggle');
+    const isAutoplay = autoplayToggle ? autoplayToggle.checked : (localStorage.getItem('yt_autoplay') !== 'false');
+    const nextVideoUrl = window.nextVideoUrl;
+
+    if (!isAutoplay || !nextVideoUrl) return;
+
+    const overlay = document.getElementById('autoplayOverlay');
+    const countdownEl = document.getElementById('countdownSecs');
+    if (overlay) {
+      overlay.style.display = 'flex';
+    }
+
+    let remaining = 5;
+    if (countdownEl) countdownEl.textContent = remaining;
+
+    if (this.autoplayTimer) clearInterval(this.autoplayTimer);
+    this.autoplayTimer = setInterval(() => {
+      remaining--;
+      if (countdownEl) countdownEl.textContent = remaining;
+      if (remaining <= 0) {
+        clearInterval(this.autoplayTimer);
+        window.location.href = nextVideoUrl;
+      }
+    }, 1000);
+
+    const cancelBtn = document.getElementById('cancelAutoplayBtn');
+    if (cancelBtn) {
+      cancelBtn.onclick = () => {
+        if (this.autoplayTimer) clearInterval(this.autoplayTimer);
+        if (overlay) overlay.style.display = 'none';
+      };
     }
   }
 
