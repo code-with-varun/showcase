@@ -3,6 +3,30 @@
  * Shared Footer & Modals Template (Light Theme)
  */
 ?>
+    <!-- Actual Site Footer -->
+    <footer class="yt-site-footer mt-5 pt-4 pb-4 border-top border-light-subtle text-secondary small">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-2">
+          <img src="<?= $baseUrl ?>/public/Runit%20logo%20pack/app-icon-red.png" alt="Runit" height="20" class="rounded">
+          <span class="fw-bold text-dark" style="letter-spacing: -0.3px;">RUNIT <span style="color: #d6111a;">SHOWCASE</span></span>
+          <span class="text-secondary ms-1">&copy; <?= date('Y') ?> Runit Showcase</span>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+          <a href="<?= $baseUrl ?>/index.php?type=video" class="text-secondary text-decoration-none">Videos</a>
+          <span class="text-muted">•</span>
+          <a href="<?= $baseUrl ?>/index.php?type=image" class="text-secondary text-decoration-none">Images</a>
+          <span class="text-muted">•</span>
+          <a href="<?= $baseUrl ?>/index.php?type=document" class="text-secondary text-decoration-none">Documents</a>
+          <?php if (isAdminLoggedIn()): ?>
+            <span class="text-muted">•</span>
+            <a href="<?= $baseUrl ?>/studio.php" class="text-danger text-decoration-none fw-semibold">
+              <i class="bi bi-gear-fill me-1"></i>Studio
+            </a>
+          <?php endif; ?>
+        </div>
+      </div>
+    </footer>
   </main>
 
   <!-- Global CDN & Embed Hub Modal -->

@@ -1137,4 +1137,18 @@ body.sidebar-collapsed .yt-main-content {
   border-color: #0f0f0f !important;
 }
 
+/* Site Footer */
+.yt-site-footer {
+  background-color: transparent;
+}
+
+.yt-site-footer a {
+  transition: color 0.15s ease;
+}
+
+.yt-site-footer a:hover {
+  color: #0f0f0f !important;
+}
+
+
 

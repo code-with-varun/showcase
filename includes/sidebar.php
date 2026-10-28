@@ -10,8 +10,6 @@ $pdo = getDB();
 // Quick counts by the 3 simple categories
 $statStmt = $pdo->query("
     SELECT 
-        COUNT(*) AS total_files,
-        COALESCE(SUM(file_size), 0) AS total_size,
         SUM(CASE WHEN asset_type = 'video' THEN 1 ELSE 0 END) AS count_videos,
         SUM(CASE WHEN asset_type = 'image' THEN 1 ELSE 0 END) AS count_images,
         SUM(CASE WHEN asset_type IN ('document', 'archive') THEN 1 ELSE 0 END) AS count_docs_zips
@@ -19,7 +17,7 @@ $statStmt = $pdo->query("
     WHERE is_public = 1
 ");
 $sidebarStats = $statStmt->fetch() ?: [
-    'total_files' => 0, 'total_size' => 0, 'count_videos' => 0, 'count_images' => 0, 'count_docs_zips' => 0
+    'count_videos' => 0, 'count_images' => 0, 'count_docs_zips' => 0
 ];
 
 $currentType = $_GET['type'] ?? '';
@@ -49,15 +47,5 @@ $currentType = $_GET['type'] ?? '';
       </a>
 
     </nav>
-
-    <!-- Sidebar Footer Stats -->
-    <div class="sidebar-footer mt-auto pt-3 border-top border-secondary-subtle" style="font-size: 0.75rem; color: var(--yt-text-muted);">
-      <div class="mb-1">
-        <span class="badge bg-success-subtle text-success">● Live CDN</span>
-      </div>
-      <div><strong><?= (int)$sidebarStats['total_files'] ?></strong> Total Assets</div>
-      <div><strong><?= formatBytes((float)$sidebarStats['total_size']) ?></strong> Stored</div>
-      <div class="mt-2 text-muted" style="font-size: 0.7rem;">&copy; <?= date('Y') ?> Runit Showcase</div>
-    </div>
   </div>
 </aside>
