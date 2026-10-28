@@ -1,0 +1,17 @@
+# Media assets repository & uploads (ignore as they will be huge over time)
+/assets/
+/storage/
+/uploads/
+
+# Node & dependencies
+node_modules/
+package-lock.json
+
+# Environment & local credentials
+.env
+.env.local
+
+# OS & Temp files
+Thumbs.db
+.DS_Store
+*.log

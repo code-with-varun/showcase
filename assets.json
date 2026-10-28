@@ -1,15 +1,15 @@
 {
-  "updatedAt": "2026-08-02T04:29:27.270Z",
+  "updatedAt": "2026-08-02T09:02:27.263Z",
   "cdnBaseUrl": "https://code-with-varun.github.io/showcase",
   "rawBaseUrl": "https://raw.githubusercontent.com/code-with-varun/showcase/main",
   "stats": {
     "totalFiles": 17,
-    "totalSizeBytes": 11222555,
-    "totalSizeFormatted": "10.7 MB",
+    "totalSizeBytes": 128882571,
+    "totalSizeFormatted": "122.91 MB",
     "categoriesCount": {
-      "motion-comics": 1,
+      "motion-comics": 2,
       "videos": 0,
-      "images": 14,
+      "images": 13,
       "audio": 0,
       "documents": 0,
       "archives": 2,
@@ -288,42 +288,40 @@
       "description": "Archived CDN asset: screencapture-localhost-3000-watchlist-2026-07-31-19_46_38.png"
     },
     {
-      "id": "images-shadow-realm-sorcerer-png",
-      "title": "Shadow Realm Sorcerer",
-      "filename": "shadow-realm-sorcerer.png",
-      "path": "assets/images/shadow-realm-sorcerer.png",
-      "category": "images",
-      "extension": "png",
-      "sizeBytes": 1133035,
-      "sizeFormatted": "1.08 MB",
-      "updatedAt": "2026-08-02T04:10:52.802Z",
+      "id": "motion-comics-varun-kiruthiga-aadi-masam-story-mp4",
+      "title": "Varun Kiruthiga Aadi Masam Story",
+      "filename": "Varun-kiruthiga-Aadi-masam-story.mp4",
+      "path": "assets/motion-comics/Varun-kiruthiga-Aadi-masam-story.mp4",
+      "category": "motion-comics",
+      "extension": "mp4",
+      "sizeBytes": 65930717,
+      "sizeFormatted": "62.88 MB",
+      "updatedAt": "2026-07-17T04:14:04.160Z",
       "tags": [
-        "PNG",
-        "Image",
-        "Images/shadow Realm Sorcerer.png"
+        "MP4",
+        "Motion Comic",
+        "Video"
       ],
-      "thumbnail": "assets/images/shadow-realm-sorcerer.png",
-      "description": "Archived asset: shadow-realm-sorcerer.png"
+      "thumbnail": null,
+      "description": "Archived CDN asset: Varun-kiruthiga-Aadi-masam-story.mp4"
     },
     {
-      "id": "motion-comics-cyber-guardian-cover-png",
-      "title": "Cyber Guardian Cover",
-      "filename": "cyber-guardian-cover.png",
-      "path": "assets/motion-comics/cyber-guardian-cover.png",
+      "id": "motion-comics-varun-kiruthiga-reception-story-mp4",
+      "title": "Varun Kiruthiga Reception Story",
+      "filename": "Varun-kiruthiga-reception-story.mp4",
+      "path": "assets/motion-comics/Varun-kiruthiga-reception-story.mp4",
       "category": "motion-comics",
-      "extension": "png",
-      "sizeBytes": 1276300,
-      "sizeFormatted": "1.22 MB",
-      "updatedAt": "2026-08-02T04:10:36.635Z",
+      "extension": "mp4",
+      "sizeBytes": 54138634,
+      "sizeFormatted": "51.63 MB",
+      "updatedAt": "2026-06-02T03:58:34.625Z",
       "tags": [
-        "PNG",
+        "MP4",
         "Motion Comic",
-        "AI Art",
-        "Graphic",
-        "Motion Comics/cyber Guardian Cover.png"
+        "Video"
       ],
-      "thumbnail": "assets/motion-comics/cyber-guardian-cover.png",
-      "description": "Archived asset: cyber-guardian-cover.png"
+      "thumbnail": null,
+      "description": "Archived CDN asset: Varun-kiruthiga-reception-story.mp4"
     }
   ]
 }

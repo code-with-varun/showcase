@@ -1,0 +1,586 @@
+/**
+ * YouTube Dark Theme & Player Styles for Showcase Tube
+ * Built on Bootstrap 5.3 Dark Mode
+ */
+
+:root {
+  --yt-bg: #0f0f0f;
+  --yt-surface: #181818;
+  --yt-surface-hover: #272727;
+  --yt-border: #2c2c2c;
+  --yt-red: #ff0000;
+  --yt-red-hover: #cc0000;
+  --yt-text: #f1f1f1;
+  --yt-text-muted: #aaaaaa;
+  --sidebar-width: 240px;
+  --sidebar-mini-width: 72px;
+  --topbar-height: 56px;
+}
+
+body[data-bs-theme="dark"] {
+  background-color: var(--yt-bg) !important;
+  color: var(--yt-text) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   TOPBAR NAVBAR
+   ========================================================================== */
+.yt-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-height);
+  background-color: var(--yt-bg);
+  border-bottom: 1px solid var(--yt-border);
+  z-index: 1040;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+}
+
+.yt-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  font-size: 1.15rem;
+}
+
+.yt-logo-badge {
+  background: var(--yt-red);
+  color: #fff;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.yt-search-container {
+  max-width: 600px;
+  width: 100%;
+}
+
+.yt-search-group {
+  display: flex;
+  border: 1px solid var(--yt-border);
+  border-radius: 40px;
+  overflow: hidden;
+  background-color: #121212;
+  transition: border-color 0.2s ease;
+}
+
+.yt-search-group:focus-within {
+  border-color: #3ea6ff;
+}
+
+.yt-search-input {
+  background: transparent !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  padding-left: 1.25rem;
+  font-size: 0.95rem;
+}
+
+.yt-search-btn {
+  background-color: #222222 !important;
+  border: none !important;
+  border-left: 1px solid var(--yt-border) !important;
+  color: #aaa !important;
+  padding: 0.5rem 1.25rem !important;
+  border-radius: 0 40px 40px 0 !important;
+}
+
+.yt-search-btn:hover {
+  background-color: #2b2b2b !important;
+  color: #fff !important;
+}
+
+/* ==========================================================================
+   SIDEBAR DRAWER
+   ========================================================================== */
+.yt-sidebar {
+  position: fixed;
+  top: var(--topbar-height);
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  background-color: var(--yt-bg);
+  border-right: 1px solid var(--yt-border);
+  overflow-y: auto;
+  z-index: 1030;
+  padding: 0.75rem 0.5rem;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s ease;
+}
+
+.yt-main-content {
+  margin-left: var(--sidebar-width);
+  margin-top: var(--topbar-height);
+  padding: 1.25rem 1.75rem;
+  min-height: calc(100vh - var(--topbar-height));
+  transition: margin-left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Collapsed mini sidebar */
+body.sidebar-collapsed .yt-sidebar {
+  width: var(--sidebar-mini-width);
+  padding: 0.5rem 0.25rem;
+}
+
+body.sidebar-collapsed .yt-sidebar .nav-link span.nav-text,
+body.sidebar-collapsed .yt-sidebar .sidebar-heading,
+body.sidebar-collapsed .yt-sidebar .sidebar-footer {
+  display: none;
+}
+
+body.sidebar-collapsed .yt-sidebar .nav-link {
+  flex-direction: column;
+  padding: 0.75rem 0.25rem;
+  font-size: 0.65rem;
+  text-align: center;
+  gap: 0.25rem;
+}
+
+body.sidebar-collapsed .yt-sidebar .nav-link i {
+  font-size: 1.35rem;
+}
+
+body.sidebar-collapsed .yt-main-content {
+  margin-left: var(--sidebar-mini-width);
+}
+
+/* Sidebar Nav links */
+.yt-sidebar .nav-link {
+  color: var(--yt-text);
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.15s ease;
+}
+
+.yt-sidebar .nav-link:hover {
+  background-color: var(--yt-surface-hover);
+  color: #fff;
+}
+
+.yt-sidebar .nav-link.active {
+  background-color: #272727;
+  color: #fff;
+  font-weight: 600;
+}
+
+.yt-sidebar .nav-link i {
+  font-size: 1.2rem;
+  width: 24px;
+  text-align: center;
+}
+
+.sidebar-heading {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--yt-text-muted);
+  font-weight: 700;
+  padding: 0.75rem 1rem 0.25rem 1rem;
+  letter-spacing: 0.5px;
+}
+
+/* ==========================================================================
+   CATEGORY CHIP PILLS
+   ========================================================================== */
+.yt-chip-bar {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.25rem;
+  scrollbar-width: none;
+}
+.yt-chip-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.yt-chip {
+  background-color: var(--yt-surface);
+  color: var(--yt-text);
+  border: 1px solid var(--yt-border);
+  border-radius: 8px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.15s ease;
+}
+
+.yt-chip:hover {
+  background-color: var(--yt-surface-hover);
+  color: #fff;
+}
+
+.yt-chip.active {
+  background-color: #fff;
+  color: #0f0f0f;
+  font-weight: 600;
+  border-color: #fff;
+}
+
+/* ==========================================================================
+   YOUTUBE ASSET / VIDEO CARDS
+   ========================================================================== */
+.yt-card {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  position: relative;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+}
+
+.yt-card:hover .yt-thumb-wrapper img {
+  transform: scale(1.03);
+}
+
+.yt-thumb-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: #1e1e1e;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.yt-thumb-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.yt-thumb-wrapper video.hover-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+}
+
+.yt-card:hover .yt-thumb-wrapper video.hover-preview {
+  display: block;
+}
+
+.yt-duration-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.yt-type-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.yt-card-body {
+  padding: 0.75rem 0.25rem 0.25rem 0.25rem;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.yt-author-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #272727;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.yt-card-info {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.yt-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #f1f1f1;
+  margin-bottom: 0.3rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yt-card-meta {
+  font-size: 0.8rem;
+  color: var(--yt-text-muted);
+  line-height: 1.25;
+}
+
+/* ==========================================================================
+   YOUTUBE PLAYER & WATCH PAGE
+   ========================================================================== */
+.watch-container {
+  max-width: 1750px;
+  margin: 0 auto;
+}
+
+.yt-player-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  user-select: none;
+}
+
+.yt-player-container video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+/* Theater Mode */
+.watch-layout.theater-active {
+  display: block;
+}
+
+.watch-layout.theater-active .yt-player-container {
+  max-height: 80vh;
+  border-radius: 0;
+  margin-bottom: 1.5rem;
+}
+
+/* Custom Player Controls */
+.yt-controls-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+  padding: 0 1rem 0.5rem 1rem;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  z-index: 20;
+}
+
+.yt-player-container:hover .yt-controls-overlay,
+.yt-player-container.paused .yt-controls-overlay {
+  opacity: 1;
+}
+
+/* Progress bar / Scrubber */
+.yt-progress-container {
+  position: relative;
+  width: 100%;
+  height: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.yt-progress-bg {
+  width: 100%;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.25);
+  position: relative;
+  transition: height 0.1s ease;
+  border-radius: 2px;
+}
+
+.yt-progress-container:hover .yt-progress-bg {
+  height: 6px;
+}
+
+.yt-progress-buffer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  background-color: rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+}
+
+.yt-progress-played {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  background-color: var(--yt-red);
+  border-radius: 2px;
+}
+
+.yt-progress-scrubber {
+  position: absolute;
+  top: 50%;
+  right: -6px;
+  width: 13px;
+  height: 13px;
+  background-color: var(--yt-red);
+  border-radius: 50%;
+  transform: translateY(-50%) scale(0);
+  transition: transform 0.15s ease;
+}
+
+.yt-progress-container:hover .yt-progress-scrubber {
+  transform: translateY(-50%) scale(1);
+}
+
+.yt-scrub-tooltip {
+  position: absolute;
+  bottom: 24px;
+  background-color: rgba(0,0,0,0.85);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: none;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.yt-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.25rem;
+}
+
+.yt-ctrl-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.25rem;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s ease, color 0.15s ease;
+}
+
+.yt-ctrl-btn:hover {
+  color: var(--yt-red);
+}
+
+.yt-volume-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.yt-volume-slider {
+  width: 0;
+  opacity: 0;
+  transition: width 0.2s ease, opacity 0.2s ease;
+  accent-color: #fff;
+  cursor: pointer;
+}
+
+.yt-volume-wrapper:hover .yt-volume-slider {
+  width: 60px;
+  opacity: 1;
+  margin-left: 0.25rem;
+}
+
+.yt-time-display {
+  font-size: 0.85rem;
+  color: #ddd;
+  margin-left: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Watch Description Box */
+.yt-desc-box {
+  background-color: #272727;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  cursor: pointer;
+  position: relative;
+}
+
+.yt-desc-box:hover {
+  background-color: #313131;
+}
+
+.yt-desc-text.collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.timestamp-link {
+  color: #3ea6ff;
+  text-decoration: none;
+  font-weight: 600;
+}
+.timestamp-link:hover {
+  text-decoration: underline;
+}
+
+/* Responsive adjustments */
+@media (max-width: 991.98px) {
+  .yt-sidebar {
+    transform: translateX(-100%);
+  }
+  body.sidebar-mobile-open .yt-sidebar {
+    transform: translateX(0);
+  }
+  .yt-main-content {
+    margin-left: 0 !important;
+    padding: 1rem;
+  }
+}
