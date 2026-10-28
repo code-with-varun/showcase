@@ -2,6 +2,7 @@
 /assets/
 /storage/
 /uploads/
+/public/
 
 # Node & dependencies
 node_modules/

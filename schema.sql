@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS `cdn_logs` (
 
 -- Initial default categories
 INSERT INTO `categories` (`name`, `slug`, `icon`) VALUES
-('All Videos', 'videos', 'bi-camera-video'),
+('Videos', 'videos', 'bi-camera-video'),
 ('Motion Comics', 'motion-comics', 'bi-film'),
 ('Images & Artwork', 'images', 'bi-image'),
 ('Documents & PDFs', 'documents', 'bi-file-earmark-text'),

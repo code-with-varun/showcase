@@ -107,7 +107,7 @@ class SyncManager {
                     ':id'       => $id,
                     ':title'    => $title,
                     ':slug'     => $slug,
-                    ':desc'     => "Auto-synced from media repository: {$file['filename']}",
+                    ':desc'     => "Cataloged asset: {$title}",
                     ':type'     => $assetType,
                     ':cat_id'   => $categoryId,
                     ':project'  => $project,
@@ -244,7 +244,7 @@ class SyncManager {
                 return $this->formatProjectName($folder);
             }
             if ($parts[1] === 'motion-comics') {
-                return 'AI Motion Comics';
+                return 'Motion Comics';
             }
             // For other asset types with subfolders (e.g. assets/videos/{project}/...)
             if (count($parts) > 3) {
@@ -256,7 +256,7 @@ class SyncManager {
             return 'ScripVault';
         }
         if (stripos($normalized, 'motion-comic') !== false) {
-            return 'AI Motion Comics';
+            return 'Motion Comics';
         }
 
         return null;
@@ -275,16 +275,25 @@ class SyncManager {
      */
     public function formatTitle(string $filename): string {
         $name = pathinfo($filename, PATHINFO_FILENAME);
+
+        // Handle browser screencaptures (e.g. screencapture-localhost-3000-dashboard-2026...)
+        if (stripos($name, 'screencapture') !== false) {
+            if (preg_match('/screencapture-localhost-\d+-(.+?)-\d{4}-\d{2}-\d{2}/i', $name, $m)) {
+                return "ScripVault — " . ucwords(str_replace(['_', '-'], ' ', $m[1]));
+            }
+            return "ScripVault — Platform View";
+        }
+
         // Replace dashes and underscores with spaces
         $clean = preg_replace('/[_\-]+/', ' ', $name);
         $clean = trim(preg_replace('/\s+/', ' ', $clean));
 
-        // If purely numbers or hash, add descriptive prefix
+        // If purely numbers or hash, format cleanly
         if (preg_match('/^\d{10,}$/', $clean)) {
-            return "Motion Comic Panel " . substr($clean, -6);
+            return "Story Panel " . substr($clean, -4);
         }
         if (str_starts_with(strtolower($clean), 'file 00000000')) {
-            return "Artwork Asset " . substr($clean, -8);
+            return "Graphic Panel " . substr($clean, -6);
         }
         return ucwords($clean);
     }

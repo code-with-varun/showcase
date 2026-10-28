@@ -1,9 +1,9 @@
 <?php
 /**
- * Shared Sidebar - 3 Simple Categories:
- * 1. Videos
- * 2. Images
- * 3. Documents & Zips
+ * Shared Sidebar - 3 Clean Categories:
+ * - Videos
+ * - Images (Project-wise)
+ * - Documents & Archives
  */
 $pdo = getDB();
 
@@ -27,22 +27,17 @@ $currentType = $_GET['type'] ?? '';
 <aside class="yt-sidebar" id="ytSidebar">
   <div class="d-flex flex-column h-100">
     <nav class="nav flex-column gap-1">
-      <a class="nav-link <?= (empty($currentType) && basename($_SERVER['PHP_SELF']) === 'index.php') ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php">
-        <i class="bi bi-house-door-fill"></i>
-        <span class="nav-text">All (3 Sections)</span>
-      </a>
-
-      <!-- 1. VIDEOS -->
-      <a class="nav-link <?= ($currentType === 'video') ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=video">
+      <!-- VIDEOS -->
+      <a class="nav-link <?= ($currentType === 'video' || (empty($currentType) && basename($_SERVER['PHP_SELF']) === 'index.php')) ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=video">
         <i class="bi bi-play-btn-fill text-danger"></i>
-        <span class="nav-text">1. Videos</span>
+        <span class="nav-text">Videos</span>
         <span class="badge bg-secondary ms-auto small nav-text"><?= (int)$sidebarStats['count_videos'] ?></span>
       </a>
 
-      <!-- 2. IMAGES (PROJECT-WISE) -->
+      <!-- IMAGES (PROJECT-WISE) -->
       <a class="nav-link <?= ($currentType === 'image' && empty($_GET['project'])) ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=image">
         <i class="bi bi-images text-info"></i>
-        <span class="nav-text">2. Images</span>
+        <span class="nav-text">Images</span>
         <span class="badge bg-secondary ms-auto small nav-text"><?= (int)$sidebarStats['count_images'] ?></span>
       </a>
 
@@ -51,15 +46,15 @@ $currentType = $_GET['type'] ?? '';
         <a class="nav-link py-1 small <?= ($currentType === 'image' && ($_GET['project'] ?? '') === 'ScripVault') ? 'active text-primary fw-bold' : 'text-secondary' ?>" href="<?= $baseUrl ?>/index.php?type=image&project=ScripVault" style="font-size: 0.82rem;">
           <i class="bi bi-window-stack me-1 text-primary"></i> ScripVault
         </a>
-        <a class="nav-link py-1 small <?= ($currentType === 'image' && ($_GET['project'] ?? '') === 'AI Motion Comics') ? 'active text-danger fw-bold' : 'text-secondary' ?>" href="<?= $baseUrl ?>/index.php?type=image&project=AI+Motion+Comics" style="font-size: 0.82rem;">
-          <i class="bi bi-film me-1 text-danger"></i> AI Motion Comics
+        <a class="nav-link py-1 small <?= ($currentType === 'image' && ($_GET['project'] ?? '') === 'Motion Comics') ? 'active text-danger fw-bold' : 'text-secondary' ?>" href="<?= $baseUrl ?>/index.php?type=image&project=Motion+Comics" style="font-size: 0.82rem;">
+          <i class="bi bi-film me-1 text-danger"></i> Motion Comics
         </a>
       </div>
 
-      <!-- 3. DOCUMENTS & ZIPS -->
-      <a class="nav-link <?= ($currentType === 'docs_zips') ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=docs_zips">
+      <!-- DOCUMENTS & ARCHIVES -->
+      <a class="nav-link <?= ($currentType === 'document' || $currentType === 'docs_zips') ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=document">
         <i class="bi bi-archive-fill text-warning"></i>
-        <span class="nav-text">3. Documents & Zips</span>
+        <span class="nav-text">Documents & Archives</span>
         <span class="badge bg-secondary ms-auto small nav-text"><?= (int)$sidebarStats['count_docs_zips'] ?></span>
       </a>
 

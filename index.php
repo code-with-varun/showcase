@@ -1,10 +1,10 @@
 <?php
 /**
- * Showcase Tube - YouTube-style Media Vault & Streaming App (Light Theme)
- * Structured into 3 clear categories:
- * 1. Videos (Video first!)
- * 2. Images & Panels
- * 3. Documents & Zips
+ * Showcase - Professional Media Vault & Streaming Application
+ * Clean, focused category views:
+ * - Videos (Default)
+ * - Images (Project-wise: ScripVault & Motion Comics)
+ * - Documents & Archives
  */
 
 require_once __DIR__ . '/config/database.php';
@@ -13,11 +13,29 @@ require_once __DIR__ . '/config/auth.php';
 $pdo = getDB();
 $baseUrl = getBaseUrl();
 
-// Filter: 'all', 'video', 'image', 'docs_zips'
-$activeType = $_GET['type'] ?? 'all';
-$searchQ    = trim($_GET['q'] ?? '');
+// Active category: 'video' (default), 'image', 'document'
+$activeType = $_GET['type'] ?? 'video';
+if ($activeType === 'all' || !in_array($activeType, ['video', 'image', 'document', 'archive', 'docs_zips'])) {
+    $activeType = 'video';
+}
+if ($activeType === 'docs_zips' || $activeType === 'archive') {
+    $activeType = 'document';
+}
 
-// Build Query
+$searchQ = trim($_GET['q'] ?? '');
+$selectedProject = trim($_GET['project'] ?? '');
+
+// Category counts for the navigation switcher
+$countsStmt = $pdo->query("
+    SELECT 
+        SUM(CASE WHEN asset_type = 'video' THEN 1 ELSE 0 END) AS count_videos,
+        SUM(CASE WHEN asset_type = 'image' THEN 1 ELSE 0 END) AS count_images,
+        SUM(CASE WHEN asset_type IN ('document', 'archive') THEN 1 ELSE 0 END) AS count_docs
+    FROM assets WHERE is_public = 1
+");
+$catCounts = $countsStmt->fetch() ?: ['count_videos' => 0, 'count_images' => 0, 'count_docs' => 0];
+
+// Query active category assets
 $where = ['a.is_public = 1'];
 $params = [];
 
@@ -25,7 +43,7 @@ if ($activeType === 'video') {
     $where[] = "a.asset_type = 'video'";
 } elseif ($activeType === 'image') {
     $where[] = "a.asset_type = 'image'";
-} elseif ($activeType === 'docs_zips' || $activeType === 'document' || $activeType === 'archive') {
+} else {
     $where[] = "a.asset_type IN ('document', 'archive')";
 }
 
@@ -45,43 +63,29 @@ $sql = "SELECT a.*, c.name AS category_name, c.slug AS category_slug
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
-$allAssets = $stmt->fetchAll();
+$assetsList = $stmt->fetchAll();
 
-// Group into the 3 clean categories: 1. Videos, 2. Images, 3. Documents & Zips
-$videosList   = [];
-$imagesList   = [];
-$docsZipsList = [];
-
-foreach ($allAssets as $item) {
-    if ($item['asset_type'] === 'video') {
-        $videosList[] = $item;
-    } elseif ($item['asset_type'] === 'image') {
-        $imagesList[] = $item;
-    } else {
-        $docsZipsList[] = $item;
-    }
-}
-
-// Group images project-wise
-$selectedProject = trim($_GET['project'] ?? '');
+// If in Images view, group assets project-wise
 $imagesByProject = [];
-foreach ($imagesList as $img) {
-    $p = !empty($img['project']) ? trim($img['project']) : 'General Showcase';
-    $imagesByProject[$p][] = $img;
+if ($activeType === 'image') {
+    foreach ($assetsList as $img) {
+        $p = !empty($img['project']) ? trim($img['project']) : 'General Showcase';
+        $imagesByProject[$p][] = $img;
+    }
+    uksort($imagesByProject, function($a, $b) {
+        if ($a === 'ScripVault') return -1;
+        if ($b === 'ScripVault') return 1;
+        if ($a === 'Motion Comics') return -1;
+        if ($b === 'Motion Comics') return 1;
+        return strcasecmp($a, $b);
+    });
 }
-uksort($imagesByProject, function($a, $b) {
-    if ($a === 'ScripVault') return -1;
-    if ($b === 'ScripVault') return 1;
-    if ($a === 'AI Motion Comics') return -1;
-    if ($b === 'AI Motion Comics') return 1;
-    return strcasecmp($a, $b);
-});
 
 $pageTitle = $searchQ ? "Search: {$searchQ}" : match($activeType) {
-    'video'     => 'Videos',
-    'image'     => 'Images & Panels',
-    'docs_zips' => 'Documents & Zips',
-    default     => 'Home'
+    'video'    => 'Videos',
+    'image'    => 'Images & Artwork',
+    'document' => 'Documents & Archives',
+    default    => 'Videos'
 };
 
 include __DIR__ . '/includes/header.php';
@@ -89,25 +93,21 @@ include __DIR__ . '/includes/header.php';
 
 <div class="container-fluid px-0">
 
-  <!-- Simple 3-Category Filter Bar -->
+  <!-- Category Navigation Switcher (Videos, Images, Documents) -->
   <div class="yt-chip-bar mb-4">
-    <a href="<?= $baseUrl ?>/index.php<?= $searchQ ? '?q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'all') ? 'active' : '' ?>">
-      <i class="bi bi-grid-fill"></i> All (3 Sections)
-    </a>
-
     <a href="<?= $baseUrl ?>/index.php?type=video<?= $searchQ ? '&q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'video') ? 'active' : '' ?>">
-      <i class="bi bi-play-circle-fill text-danger"></i> 1. Videos
-      <span class="badge bg-secondary ms-1"><?= count($videosList) ?></span>
+      <i class="bi bi-play-circle-fill text-danger me-1"></i> Videos
+      <span class="badge bg-secondary ms-1"><?= (int)$catCounts['count_videos'] ?></span>
     </a>
 
     <a href="<?= $baseUrl ?>/index.php?type=image<?= $searchQ ? '&q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'image') ? 'active' : '' ?>">
-      <i class="bi bi-images text-info"></i> 2. Images
-      <span class="badge bg-secondary ms-1"><?= count($imagesList) ?></span>
+      <i class="bi bi-images text-primary me-1"></i> Images
+      <span class="badge bg-secondary ms-1"><?= (int)$catCounts['count_images'] ?></span>
     </a>
 
-    <a href="<?= $baseUrl ?>/index.php?type=docs_zips<?= $searchQ ? '&q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'docs_zips') ? 'active' : '' ?>">
-      <i class="bi bi-archive-fill text-warning"></i> 3. Documents & Zips
-      <span class="badge bg-secondary ms-1"><?= count($docsZipsList) ?></span>
+    <a href="<?= $baseUrl ?>/index.php?type=document<?= $searchQ ? '&q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'document') ? 'active' : '' ?>">
+      <i class="bi bi-archive-fill text-warning me-1"></i> Documents & Archives
+      <span class="badge bg-secondary ms-1"><?= (int)$catCounts['count_docs'] ?></span>
     </a>
   </div>
 
@@ -116,31 +116,28 @@ include __DIR__ . '/includes/header.php';
     <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom border-light-subtle">
       <div>
         <h4 class="text-dark mb-0">Search results for <span class="text-danger">"<?= h($searchQ) ?>"</span></h4>
-        <small class="text-secondary"><?= count($allAssets) ?> total matching items found</small>
+        <small class="text-secondary"><?= count($assetsList) ?> matching items in <?= h($pageTitle) ?></small>
       </div>
-      <a href="<?= $baseUrl ?>/index.php<?= $activeType !== 'all' ? '?type=' . urlencode($activeType) : '' ?>" class="btn btn-outline-secondary btn-sm">
+      <a href="<?= $baseUrl ?>/index.php?type=<?= urlencode($activeType) ?>" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-x-circle me-1"></i> Clear Search
       </a>
     </div>
   <?php endif; ?>
 
   <!-- ====================================================================== -->
-  <!-- 1. VIDEOS (VIDEO FIRST!) -->
+  <!-- 1. VIDEOS VIEW -->
   <!-- ====================================================================== -->
-  <?php if ($activeType === 'all' || $activeType === 'video'): ?>
+  <?php if ($activeType === 'video'): ?>
     <section class="mb-5" id="videosSection">
       <div class="d-flex align-items-center justify-content-between mb-3">
         <h4 class="text-dark mb-0 d-flex align-items-center gap-2">
           <i class="bi bi-play-btn-fill text-danger"></i>
           <span>Videos</span>
-          <span class="badge bg-danger text-white small"><?= count($videosList) ?></span>
+          <span class="badge bg-danger text-white small"><?= count($assetsList) ?></span>
         </h4>
-        <?php if ($activeType === 'all' && count($videosList) > 0): ?>
-          <a href="<?= $baseUrl ?>/index.php?type=video" class="text-secondary text-decoration-none small">View only videos &rarr;</a>
-        <?php endif; ?>
       </div>
 
-      <?php if (empty($videosList)): ?>
+      <?php if (empty($assetsList)): ?>
         <div class="p-4 rounded-3 border border-light-subtle bg-white text-center text-secondary shadow-sm">
           <i class="bi bi-camera-video display-6 d-block mb-2 text-muted"></i>
           <div>No videos found <?= $searchQ ? 'matching "' . h($searchQ) . '"' : 'yet' ?>.</div>
@@ -148,10 +145,9 @@ include __DIR__ . '/includes/header.php';
         </div>
       <?php else: ?>
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 g-xl-4">
-          <?php foreach ($videosList as $vid): 
+          <?php foreach ($assetsList as $vid): 
             $watchUrl  = "{$baseUrl}/watch.php?v={$vid['id']}";
             $streamUrl = "{$baseUrl}/stream.php?v={$vid['id']}";
-            $rawCdnUrl = "{$baseUrl}/" . ltrim($vid['file_path'], '/');
             $thumbUrl  = $vid['thumbnail_path'] ? "{$baseUrl}/" . ltrim($vid['thumbnail_path'], '/') : '';
             if (!$thumbUrl) {
                 $thumbUrl = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'><rect width='640' height='360' fill='%23e0e0e0'/><circle cx='320' cy='180' r='48' fill='%23cc0000'/><polygon points='310,160 340,180 310,200' fill='%23ffffff'/></svg>";
@@ -219,26 +215,23 @@ include __DIR__ . '/includes/header.php';
   <?php endif; ?>
 
   <!-- ====================================================================== -->
-  <!-- 2. IMAGES & ARTWORK PANELS (PROJECT-WISE) -->
+  <!-- 2. IMAGES VIEW (PROJECT-WISE) -->
   <!-- ====================================================================== -->
-  <?php if ($activeType === 'all' || $activeType === 'image'): ?>
+  <?php if ($activeType === 'image'): ?>
     <section class="mb-5" id="imagesSection">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
           <h4 class="text-dark mb-0 d-flex align-items-center gap-2">
             <i class="bi bi-images text-info"></i>
             <span>Images & Artwork</span>
-            <span class="badge bg-info-subtle text-info border border-info-subtle small"><?= count($imagesList) ?> Total</span>
+            <span class="badge bg-info-subtle text-info border border-info-subtle small"><?= count($assetsList) ?> Total</span>
             <span class="badge bg-secondary-subtle text-dark border small"><?= count($imagesByProject) ?> Projects</span>
           </h4>
           <small class="text-secondary">Organized project-wise with high-resolution lightbox & CDN embedding.</small>
         </div>
-        <?php if ($activeType === 'all' && count($imagesList) > 0): ?>
-          <a href="<?= $baseUrl ?>/index.php?type=image" class="text-secondary text-decoration-none small">View only images &rarr;</a>
-        <?php endif; ?>
       </div>
 
-      <?php if (empty($imagesList)): ?>
+      <?php if (empty($assetsList)): ?>
         <div class="p-4 rounded-3 border border-light-subtle bg-white text-center text-secondary shadow-sm">
           <i class="bi bi-image display-6 d-block mb-2 text-muted"></i>
           <div>No images found <?= $searchQ ? 'matching "' . h($searchQ) . '"' : 'yet' ?>.</div>
@@ -251,11 +244,11 @@ include __DIR__ . '/includes/header.php';
           <span class="text-secondary small fw-bold ms-1 me-1"><i class="bi bi-folder2-open text-danger me-1"></i>Projects:</span>
           
           <button type="button" class="btn btn-sm <?= (empty($selectedProject) || $selectedProject === 'all') ? 'btn-dark active' : 'btn-outline-secondary' ?> rounded-pill px-3 project-filter-pill" data-project="all" onclick="filterProjectDisplay('all')">
-            <i class="bi bi-collection me-1"></i> All Projects (<?= count($imagesList) ?>)
+            <i class="bi bi-collection me-1"></i> All Projects (<?= count($assetsList) ?>)
           </button>
 
           <?php foreach ($imagesByProject as $pName => $pItems): 
-            $pillIcon = ($pName === 'ScripVault') ? 'bi-window-stack text-primary' : (($pName === 'AI Motion Comics') ? 'bi-film text-danger' : 'bi-folder-symlink text-info');
+            $pillIcon = ($pName === 'ScripVault') ? 'bi-window-stack text-primary' : 'bi-film text-danger';
             $isActive = ($selectedProject === $pName);
           ?>
             <button type="button" class="btn btn-sm <?= $isActive ? 'btn-dark active' : 'btn-outline-secondary' ?> rounded-pill px-3 project-filter-pill" data-project="<?= h($pName) ?>" onclick="filterProjectDisplay('<?= addslashes(h($pName)) ?>')">
@@ -269,14 +262,12 @@ include __DIR__ . '/includes/header.php';
           <?php foreach ($imagesByProject as $pName => $pItems): 
             $pSlug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $pName));
             $isScripVault = ($pName === 'ScripVault');
-            $isMotionComics = ($pName === 'AI Motion Comics');
-
-            $pIcon = $isScripVault ? 'bi-window-stack text-primary' : ($isMotionComics ? 'bi-film text-danger' : 'bi-folder2-open text-info');
-            $pAvatarBg = $isScripVault ? 'bg-primary-subtle' : ($isMotionComics ? 'bg-danger-subtle' : 'bg-info-subtle');
+            $pIcon = $isScripVault ? 'bi-window-stack text-primary' : 'bi-film text-danger';
+            $pAvatarBg = $isScripVault ? 'bg-primary-subtle' : 'bg-danger-subtle';
             $pSubtitle = $isScripVault 
-              ? 'Complete platform screenshot gallery • Responsive UI flows & dashboards' 
-              : ($isMotionComics ? 'Cinematic story panels & concept artwork illustrations' : 'Project visual asset gallery & artwork collection');
-            $pBadgeText = $isScripVault ? 'Web App Vault' : ($isMotionComics ? 'Comic Panels' : 'Project Vault');
+              ? 'Financial platform screenshot gallery • Responsive UI flows & dashboards' 
+              : 'Graphic novel story panels & concept artwork illustrations';
+            $pBadgeText = $isScripVault ? 'Web App' : 'Storyboards & Panels';
             $pLink = "{$baseUrl}/index.php?type=image&project=" . urlencode($pName);
           ?>
             <div class="project-card-container mb-4 project-group-box" data-project-name="<?= h($pName) ?>" id="project-<?= $pSlug ?>">
@@ -360,25 +351,22 @@ include __DIR__ . '/includes/header.php';
   <?php endif; ?>
 
   <!-- ====================================================================== -->
-  <!-- 3. DOCUMENTS & ZIPS -->
+  <!-- 3. DOCUMENTS & ARCHIVES VIEW -->
   <!-- ====================================================================== -->
-  <?php if ($activeType === 'all' || $activeType === 'docs_zips' || $activeType === 'document' || $activeType === 'archive'): ?>
+  <?php if ($activeType === 'document'): ?>
     <section class="mb-5" id="docsZipsSection">
       <div class="d-flex align-items-center justify-content-between mb-3">
         <h4 class="text-dark mb-0 d-flex align-items-center gap-2">
           <i class="bi bi-archive-fill text-warning"></i>
-          <span>Documents & Zips</span>
-          <span class="badge bg-warning text-dark small"><?= count($docsZipsList) ?></span>
+          <span>Documents & Archives</span>
+          <span class="badge bg-warning text-dark small"><?= count($assetsList) ?></span>
         </h4>
-        <?php if ($activeType === 'all' && count($docsZipsList) > 0): ?>
-          <a href="<?= $baseUrl ?>/index.php?type=docs_zips" class="text-secondary text-decoration-none small">View only documents & zips &rarr;</a>
-        <?php endif; ?>
       </div>
 
-      <?php if (empty($docsZipsList)): ?>
+      <?php if (empty($assetsList)): ?>
         <div class="p-4 rounded-3 border border-light-subtle bg-white text-center text-secondary shadow-sm">
           <i class="bi bi-folder-x display-6 d-block mb-2 text-muted"></i>
-          <div>No documents or zip bundles found <?= $searchQ ? 'matching "' . h($searchQ) . '"' : 'yet' ?>.</div>
+          <div>No documents or archive bundles found <?= $searchQ ? 'matching "' . h($searchQ) . '"' : 'yet' ?>.</div>
           <div class="small mt-1">Place files in <code>assets/documents/</code> or <code>assets/archives/</code> and click Sync.</div>
         </div>
       <?php else: ?>
@@ -395,7 +383,7 @@ include __DIR__ . '/includes/header.php';
                 </tr>
               </thead>
               <tbody>
-                <?php foreach ($docsZipsList as $doc): 
+                <?php foreach ($assetsList as $doc): 
                   $isPdf = (strtolower($doc['extension']) === 'pdf');
                   $rawUrl = "{$baseUrl}/" . ltrim($doc['file_path'], '/');
                   $iconClass = match($doc['extension']) {

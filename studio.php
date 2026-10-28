@@ -201,7 +201,7 @@ include __DIR__ . '/includes/header.php';
 
               <div class="col-md-6">
                 <label class="form-label text-secondary small fw-bold">Project Group (Optional)</label>
-                <input type="text" name="project" list="projectsDatalist" class="form-control bg-light text-dark border-secondary-subtle" placeholder="e.g. ScripVault, AI Motion Comics">
+                <input type="text" name="project" list="projectsDatalist" class="form-control bg-light text-dark border-secondary-subtle" placeholder="e.g. ScripVault, Motion Comics">
                 <datalist id="projectsDatalist">
                   <?php foreach ($allProjects as $p): ?>
                     <option value="<?= h($p) ?>">
@@ -246,13 +246,13 @@ include __DIR__ . '/includes/header.php';
               </p>
               <ul class="list-group list-group-flush bg-transparent small mb-3">
                 <li class="list-group-item bg-transparent text-secondary border-light-subtle">
-                  <strong class="text-dark">1. Videos:</strong> <code>assets/videos/</code> or <code>assets/motion-comics/</code>
+                  <strong class="text-dark">Videos:</strong> <code>assets/videos/</code>
                 </li>
                 <li class="list-group-item bg-transparent text-secondary border-light-subtle">
-                  <strong class="text-dark">2. Images:</strong> <code>assets/images/</code>
+                  <strong class="text-dark">Images:</strong> <code>assets/images/</code> or <code>assets/motion-comics/</code>
                 </li>
                 <li class="list-group-item bg-transparent text-secondary border-light-subtle">
-                  <strong class="text-dark">3. Documents & Zips:</strong> <code>assets/documents/</code> or <code>assets/archives/</code>
+                  <strong class="text-dark">Documents & Archives:</strong> <code>assets/documents/</code> or <code>assets/archives/</code>
                 </li>
               </ul>
               <p class="text-secondary small mb-0">
@@ -289,11 +289,11 @@ include __DIR__ . '/includes/header.php';
       <form method="GET" action="" class="d-flex flex-wrap gap-2">
         <input type="text" name="q" class="form-control form-control-sm bg-white text-dark border-secondary-subtle" placeholder="Search title or ID..." value="<?= h($searchFilter) ?>" style="width: 170px;">
         
-        <select name="type" class="form-select form-select-sm bg-white text-dark border-secondary-subtle" style="width: 135px;" onchange="this.form.submit()">
-          <option value="">All 3 Categories</option>
-          <option value="video" <?= $typeFilter === 'video' ? 'selected' : '' ?>>1. Videos</option>
-          <option value="image" <?= $typeFilter === 'image' ? 'selected' : '' ?>>2. Images</option>
-          <option value="docs_zips" <?= $typeFilter === 'docs_zips' ? 'selected' : '' ?>>3. Docs & Zips</option>
+        <select name="type" class="form-select form-select-sm bg-white text-dark border-secondary-subtle" style="width: 145px;" onchange="this.form.submit()">
+          <option value="">All Categories</option>
+          <option value="video" <?= $typeFilter === 'video' ? 'selected' : '' ?>>Videos</option>
+          <option value="image" <?= $typeFilter === 'image' ? 'selected' : '' ?>>Images</option>
+          <option value="docs_zips" <?= $typeFilter === 'docs_zips' ? 'selected' : '' ?>>Documents & Archives</option>
         </select>
 
         <select name="project" class="form-select form-select-sm bg-white text-dark border-secondary-subtle" style="width: 140px;" onchange="this.form.submit()">
