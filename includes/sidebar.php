@@ -58,26 +58,6 @@ $currentType = $_GET['type'] ?? '';
         <span class="badge bg-secondary ms-auto small nav-text"><?= (int)$sidebarStats['count_docs_zips'] ?></span>
       </a>
 
-      <hr class="my-3" style="border-color: var(--yt-border);">
-
-      <div class="sidebar-heading">Studio & CDN</div>
-
-      <a class="nav-link <?= (basename($_SERVER['PHP_SELF']) === 'studio.php') ? 'active' : '' ?>" href="<?= $baseUrl ?>/studio.php">
-        <i class="bi bi-cpu-fill text-danger"></i>
-        <span class="nav-text">Creator Studio</span>
-      </a>
-
-      <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#cdnHubModal">
-        <i class="bi bi-broadcast text-info"></i>
-        <span class="nav-text">CDN & Embeds</span>
-      </a>
-
-      <?php if (isAdminLoggedIn()): ?>
-        <a class="nav-link" href="#" id="sidebarSyncBtn">
-          <i class="bi bi-arrow-repeat text-success"></i>
-          <span class="nav-text">Sync Filesystem</span>
-        </a>
-      <?php endif; ?>
     </nav>
 
     <!-- Sidebar Footer Stats -->
