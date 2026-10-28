@@ -1,6 +1,6 @@
 <?php
 /**
- * Superadmin Login
+ * Superadmin Login (Light Theme)
  * Showcase Tube & Media CDN Vault
  */
 
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-bs-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -51,15 +51,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .login-card {
       max-width: 440px;
       width: 100%;
-      background-color: var(--yt-surface);
+      background-color: #ffffff;
       border: 1px solid var(--yt-border);
       border-radius: 16px;
       padding: 2.5rem 2rem;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     }
   </style>
 </head>
-<body data-bs-theme="dark">
+<body data-bs-theme="light">
 
   <div class="login-card">
     <div class="text-center mb-4">
@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <span class="yt-logo-badge"><i class="bi bi-play-fill"></i></span>
         <span>SHOWCASE<span style="color: var(--yt-red);">TUBE</span></span>
       </a>
-      <h4 class="text-white mt-3 mb-1">Superadmin Access</h4>
+      <h4 class="text-dark mt-3 mb-1">Superadmin Access</h4>
       <p class="text-secondary small">Sign in to manage your asset repository, uploads, and CDN.</p>
     </div>
 
@@ -82,16 +82,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="mb-3">
         <label for="username" class="form-label text-secondary small fw-bold">Username</label>
         <div class="input-group">
-          <span class="input-group-text bg-black border-secondary text-secondary"><i class="bi bi-person-fill"></i></span>
-          <input type="text" class="form-control bg-black text-white border-secondary" id="username" name="username" value="<?= h($_POST['username'] ?? 'superadmin') ?>" required autofocus>
+          <span class="input-group-text bg-light border-secondary-subtle text-secondary"><i class="bi bi-person-fill"></i></span>
+          <input type="text" class="form-control bg-light text-dark border-secondary-subtle" id="username" name="username" value="<?= h($_POST['username'] ?? 'superadmin') ?>" required autofocus>
         </div>
       </div>
 
       <div class="mb-4">
         <label for="password" class="form-label text-secondary small fw-bold">Password</label>
         <div class="input-group">
-          <span class="input-group-text bg-black border-secondary text-secondary"><i class="bi bi-key-fill"></i></span>
-          <input type="password" class="form-control bg-black text-white border-secondary" id="password" name="password" required>
+          <span class="input-group-text bg-light border-secondary-subtle text-secondary"><i class="bi bi-key-fill"></i></span>
+          <input type="password" class="form-control bg-light text-dark border-secondary-subtle" id="password" name="password" required>
         </div>
       </div>
 

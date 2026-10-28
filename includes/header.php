@@ -1,6 +1,6 @@
 <?php
 /**
- * Shared Header Template
+ * Shared Header Template (Light Theme)
  * Showcase Tube & Media CDN Vault
  */
 require_once __DIR__ . '/../config/database.php';
@@ -12,7 +12,7 @@ $searchQuery = trim($_GET['q'] ?? '');
 $activePage = basename($_SERVER['PHP_SELF'], '.php');
 ?>
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-bs-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,12 +29,12 @@ $activePage = basename($_SERVER['PHP_SELF'], '.php');
   <!-- Custom YouTube Theme -->
   <link rel="stylesheet" href="<?= $baseUrl ?>/css/youtube.css">
 </head>
-<body data-bs-theme="dark">
+<body data-bs-theme="light">
 
   <!-- Top Navigation Header -->
   <header class="yt-header">
     <div class="d-flex align-items-center gap-3">
-      <button class="btn btn-link text-white p-1" id="sidebarToggleBtn" aria-label="Toggle Sidebar" style="font-size: 1.25rem;">
+      <button class="btn btn-link text-dark p-1" id="sidebarToggleBtn" aria-label="Toggle Sidebar" style="font-size: 1.25rem;">
         <i class="bi bi-list"></i>
       </button>
       <a href="<?= $baseUrl ?>/index.php" class="yt-brand">
@@ -64,10 +64,10 @@ $activePage = basename($_SERVER['PHP_SELF'], '.php');
           <span class="d-none d-sm-inline">Create & Upload</span>
         </a>
         <div class="dropdown">
-          <button class="btn btn-dark btn-sm rounded-circle p-1 dropdown-toggle d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 36px; height: 36px; background-color: #333;">
-            <i class="bi bi-person-fill text-warning"></i>
+          <button class="btn btn-light border btn-sm rounded-circle p-1 dropdown-toggle d-flex align-items-center justify-content-center shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 36px; height: 36px;">
+            <i class="bi bi-person-fill text-danger"></i>
           </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow">
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm border-light-subtle">
             <li class="dropdown-header text-uppercase" style="font-size: 0.75rem;">Logged as Superadmin</li>
             <li><a class="dropdown-item" href="<?= $baseUrl ?>/studio.php"><i class="bi bi-gear-fill me-2"></i>Creator Studio</a></li>
             <li><a class="dropdown-item" href="#" id="quickSyncBtn"><i class="bi bi-arrow-repeat me-2"></i>Sync Filesystem</a></li>
@@ -76,7 +76,7 @@ $activePage = basename($_SERVER['PHP_SELF'], '.php');
           </ul>
         </div>
       <?php else: ?>
-        <a href="<?= $baseUrl ?>/login.php" class="btn btn-outline-primary btn-sm rounded-pill px-3 d-flex align-items-center gap-1">
+        <a href="<?= $baseUrl ?>/login.php" class="btn btn-outline-danger btn-sm rounded-pill px-3 d-flex align-items-center gap-1">
           <i class="bi bi-person-circle"></i>
           <span>Sign In</span>
         </a>

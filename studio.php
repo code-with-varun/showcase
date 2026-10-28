@@ -1,6 +1,6 @@
 <?php
 /**
- * Creator Studio & Asset Management Center
+ * Creator Studio & Asset Management Center (Light Theme)
  * Showcase Tube & Media CDN Vault
  */
 
@@ -21,8 +21,7 @@ $statsStmt = $pdo->query("
         COALESCE(SUM(views_count), 0) AS total_views,
         SUM(CASE WHEN asset_type = 'video' THEN 1 ELSE 0 END) AS total_videos,
         SUM(CASE WHEN asset_type = 'image' THEN 1 ELSE 0 END) AS total_images,
-        SUM(CASE WHEN asset_type = 'document' THEN 1 ELSE 0 END) AS total_docs,
-        SUM(CASE WHEN asset_type = 'archive' THEN 1 ELSE 0 END) AS total_arch
+        SUM(CASE WHEN asset_type IN ('document', 'archive') THEN 1 ELSE 0 END) AS total_docs_zips
     FROM assets
 ");
 $studioStats = $statsStmt->fetch();
@@ -40,16 +39,22 @@ $where = ['1=1'];
 $params = [];
 
 if ($typeFilter) {
-    $where[] = 'a.asset_type = :type';
-    $params[':type'] = $typeFilter;
+    if ($typeFilter === 'docs_zips') {
+        $where[] = "a.asset_type IN ('document', 'archive')";
+    } else {
+        $where[] = 'a.asset_type = :type';
+        $params[':type'] = $typeFilter;
+    }
 }
 if ($sourceFilter) {
     $where[] = 'a.source = :source';
     $params[':source'] = $sourceFilter;
 }
 if ($searchFilter) {
-    $where[] = '(a.title LIKE :sq OR a.file_name LIKE :sq OR a.id LIKE :sq)';
-    $params[':sq'] = '%' . $searchFilter . '%';
+    $where[] = '(a.title LIKE :sq1 OR a.file_name LIKE :sq2 OR a.id LIKE :sq3)';
+    $params[':sq1'] = '%' . $searchFilter . '%';
+    $params[':sq2'] = '%' . $searchFilter . '%';
+    $params[':sq3'] = '%' . $searchFilter . '%';
 }
 
 $whereSql = implode(' AND ', $where);
@@ -70,9 +75,9 @@ include __DIR__ . '/includes/header.php';
 <div class="container-fluid px-0">
 
   <!-- Header Banner -->
-  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 pb-3 border-bottom border-secondary">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 pb-3 border-bottom border-light-subtle">
     <div>
-      <h1 class="h3 text-white mb-1 d-flex align-items-center gap-2">
+      <h1 class="h3 text-dark mb-1 d-flex align-items-center gap-2">
         <i class="bi bi-cpu-fill text-danger"></i>
         <span>Creator Studio & Asset Manager</span>
       </h1>
@@ -89,35 +94,35 @@ include __DIR__ . '/includes/header.php';
   <!-- Key Metrics Row -->
   <div class="row row-cols-2 row-cols-md-4 g-3 mb-4">
     <div class="col">
-      <div class="card bg-dark border-secondary p-3">
+      <div class="card bg-white border-light-subtle shadow-sm p-3">
         <div class="text-secondary small text-uppercase fw-bold">Total Assets</div>
-        <div class="h3 text-white mb-0 mt-1"><?= number_format((int)$studioStats['total_assets']) ?></div>
+        <div class="h3 text-dark mb-0 mt-1"><?= number_format((int)$studioStats['total_assets']) ?></div>
         <div class="small text-secondary mt-1">
-          <span class="text-danger"><?= (int)$studioStats['total_videos'] ?> vids</span> • 
-          <span class="text-info"><?= (int)$studioStats['total_images'] ?> imgs</span> • 
-          <span class="text-primary"><?= (int)$studioStats['total_docs'] ?> docs</span>
+          <span class="text-danger fw-bold"><?= (int)$studioStats['total_videos'] ?> vids</span> • 
+          <span class="text-info fw-bold"><?= (int)$studioStats['total_images'] ?> imgs</span> • 
+          <span class="text-warning fw-bold"><?= (int)$studioStats['total_docs_zips'] ?> docs/zips</span>
         </div>
       </div>
     </div>
 
     <div class="col">
-      <div class="card bg-dark border-secondary p-3">
+      <div class="card bg-white border-light-subtle shadow-sm p-3">
         <div class="text-secondary small text-uppercase fw-bold">Vault Storage</div>
-        <div class="h3 text-white mb-0 mt-1"><?= formatBytes((float)$studioStats['total_size']) ?></div>
+        <div class="h3 text-dark mb-0 mt-1"><?= formatBytes((float)$studioStats['total_size']) ?></div>
         <div class="small text-secondary mt-1">Live Disk Usage</div>
       </div>
     </div>
 
     <div class="col">
-      <div class="card bg-dark border-secondary p-3">
+      <div class="card bg-white border-light-subtle shadow-sm p-3">
         <div class="text-secondary small text-uppercase fw-bold">Total Views</div>
-        <div class="h3 text-white mb-0 mt-1"><?= number_format((int)$studioStats['total_views']) ?></div>
+        <div class="h3 text-dark mb-0 mt-1"><?= number_format((int)$studioStats['total_views']) ?></div>
         <div class="small text-secondary mt-1">Streaming & Embed Impressions</div>
       </div>
     </div>
 
     <div class="col">
-      <div class="card bg-dark border-secondary p-3">
+      <div class="card bg-white border-light-subtle shadow-sm p-3">
         <div class="text-secondary small text-uppercase fw-bold">CDN Status</div>
         <div class="h3 text-success mb-0 mt-1 d-flex align-items-center gap-1">
           <span style="font-size: 1rem;">●</span> Active
@@ -128,16 +133,16 @@ include __DIR__ . '/includes/header.php';
   </div>
 
   <!-- Dual Upload & Sync Section -->
-  <div class="card bg-dark border-secondary mb-4">
-    <div class="card-header border-secondary bg-black bg-opacity-25">
+  <div class="card bg-white border-light-subtle shadow-sm mb-4">
+    <div class="card-header border-bottom border-light-subtle bg-light">
       <ul class="nav nav-tabs card-header-tabs border-0" id="uploadTabs" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active text-white fw-semibold border-secondary bg-transparent" id="web-upload-tab" data-bs-toggle="tab" data-bs-target="#web-upload" type="button" role="tab">
+          <button class="nav-link active text-dark fw-semibold border-bottom-0" id="web-upload-tab" data-bs-toggle="tab" data-bs-target="#web-upload" type="button" role="tab">
             <i class="bi bi-cloud-arrow-up-fill text-danger me-1"></i> Web UI Uploader
           </button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link text-secondary fw-semibold border-0 bg-transparent" id="ftp-sync-tab" data-bs-toggle="tab" data-bs-target="#ftp-sync" type="button" role="tab">
+          <button class="nav-link text-secondary fw-semibold border-0" id="ftp-sync-tab" data-bs-toggle="tab" data-bs-target="#ftp-sync" type="button" role="tab">
             <i class="bi bi-folder-symlink-fill text-success me-1"></i> Large File Drop & FTP Sync
           </button>
         </li>
@@ -153,27 +158,27 @@ include __DIR__ . '/includes/header.php';
             <div class="row g-3">
               <!-- Drag and drop zone -->
               <div class="col-12">
-                <div class="p-4 border border-secondary border-dashed rounded-3 text-center bg-black bg-opacity-25" id="dropZone" style="cursor: pointer; border-style: dashed !important;">
+                <div class="p-4 border border-secondary-subtle border-dashed rounded-3 text-center bg-light" id="dropZone" style="cursor: pointer; border-style: dashed !important;">
                   <i class="bi bi-cloud-arrow-up display-4 text-danger mb-2 d-block"></i>
-                  <h5 class="text-white mb-1">Choose or drag & drop files to upload</h5>
+                  <h5 class="text-dark mb-1">Choose or drag & drop files to upload</h5>
                   <p class="text-secondary small mb-2">Supports MP4, WebM, PNG, JPG, WebP, PDF, DOCX, ZIP files</p>
                   <input type="file" id="fileInput" name="file" class="d-none" required>
                   <button type="button" class="btn btn-outline-danger btn-sm" onclick="document.getElementById('fileInput').click()">
                     Browse Files
                   </button>
-                  <div id="selectedFileInfo" class="mt-2 text-info fw-bold small"></div>
+                  <div id="selectedFileInfo" class="mt-2 text-danger fw-bold small"></div>
                 </div>
               </div>
 
               <!-- Metadata fields -->
               <div class="col-md-6">
                 <label class="form-label text-secondary small fw-bold">Title (optional, auto-derived if blank)</label>
-                <input type="text" name="title" id="uploadTitle" class="form-control bg-black text-white border-secondary" placeholder="e.g. Episode 1: The Beginning">
+                <input type="text" name="title" id="uploadTitle" class="form-control bg-light text-dark border-secondary-subtle" placeholder="e.g. Episode 1: The Beginning">
               </div>
 
               <div class="col-md-6">
                 <label class="form-label text-secondary small fw-bold">Category</label>
-                <select name="category_id" id="uploadCategory" class="form-select bg-black text-white border-secondary">
+                <select name="category_id" id="uploadCategory" class="form-select bg-light text-dark border-secondary-subtle">
                   <option value="">Auto-Detect from File Type</option>
                   <?php foreach ($categories as $cat): ?>
                     <option value="<?= $cat['id'] ?>"><?= h($cat['name']) ?></option>
@@ -183,22 +188,22 @@ include __DIR__ . '/includes/header.php';
 
               <div class="col-12">
                 <label class="form-label text-secondary small fw-bold">Description & Timestamps (Optional)</label>
-                <textarea name="description" id="uploadDesc" class="form-control bg-black text-white border-secondary" rows="2" placeholder="Asset description or chapters like 00:00 Intro, 01:30 Scene 1"></textarea>
+                <textarea name="description" id="uploadDesc" class="form-control bg-light text-dark border-secondary-subtle" rows="2" placeholder="Asset description or chapters like 00:00 Intro, 01:30 Scene 1"></textarea>
               </div>
 
               <div class="col-md-6">
                 <label class="form-label text-secondary small fw-bold">Custom Thumbnail (Optional for videos/docs)</label>
-                <input type="file" name="thumbnail" accept="image/*" class="form-control bg-black text-white border-secondary">
+                <input type="file" name="thumbnail" accept="image/*" class="form-control bg-light text-dark border-secondary-subtle">
               </div>
 
               <div class="col-md-6">
                 <label class="form-label text-secondary small fw-bold">Tags (Comma-separated)</label>
-                <input type="text" name="tags" class="form-control bg-black text-white border-secondary" placeholder="motion-comic, 4k, portfolio">
+                <input type="text" name="tags" class="form-control bg-light text-dark border-secondary-subtle" placeholder="motion-comic, 4k, portfolio">
               </div>
 
               <!-- Progress bar -->
               <div class="col-12 d-none" id="uploadProgressContainer">
-                <div class="progress bg-black border border-secondary" style="height: 12px;">
+                <div class="progress bg-light border" style="height: 12px;">
                   <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" id="uploadProgressBar" style="width: 0%;"></div>
                 </div>
                 <div class="small text-secondary mt-1 text-end" id="uploadProgressText">0%</div>
@@ -217,22 +222,19 @@ include __DIR__ . '/includes/header.php';
         <div class="tab-pane fade" id="ftp-sync" role="tabpanel">
           <div class="row align-items-center g-4">
             <div class="col-lg-7">
-              <h5 class="text-white mb-2"><i class="bi bi-hdd-network text-success me-2"></i>Direct File Drop & FTP Workflow</h5>
+              <h5 class="text-dark mb-2"><i class="bi bi-hdd-network text-success me-2"></i>Direct File Drop & FTP Workflow</h5>
               <p class="text-secondary small mb-3">
                 For massive videos (100MB - 10GB+) or multi-gigabyte zip archives, upload them directly via FTP or paste them directly into the local folders on the server:
               </p>
               <ul class="list-group list-group-flush bg-transparent small mb-3">
-                <li class="list-group-item bg-transparent text-secondary border-secondary">
-                  <strong class="text-white">Videos:</strong> <code>assets/videos/</code> or <code>assets/motion-comics/</code>
+                <li class="list-group-item bg-transparent text-secondary border-light-subtle">
+                  <strong class="text-dark">1. Videos:</strong> <code>assets/videos/</code> or <code>assets/motion-comics/</code>
                 </li>
-                <li class="list-group-item bg-transparent text-secondary border-secondary">
-                  <strong class="text-white">Images:</strong> <code>assets/images/</code>
+                <li class="list-group-item bg-transparent text-secondary border-light-subtle">
+                  <strong class="text-dark">2. Images:</strong> <code>assets/images/</code>
                 </li>
-                <li class="list-group-item bg-transparent text-secondary border-secondary">
-                  <strong class="text-white">Documents:</strong> <code>assets/documents/</code>
-                </li>
-                <li class="list-group-item bg-transparent text-secondary border-secondary">
-                  <strong class="text-white">Archives:</strong> <code>assets/archives/</code>
+                <li class="list-group-item bg-transparent text-secondary border-light-subtle">
+                  <strong class="text-dark">3. Documents & Zips:</strong> <code>assets/documents/</code> or <code>assets/archives/</code>
                 </li>
               </ul>
               <p class="text-secondary small mb-0">
@@ -240,14 +242,14 @@ include __DIR__ . '/includes/header.php';
               </p>
             </div>
 
-            <div class="col-lg-5 text-center p-4 border border-secondary rounded-3 bg-black bg-opacity-25">
+            <div class="col-lg-5 text-center p-4 border border-light-subtle rounded-3 bg-light">
               <div class="display-4 text-success mb-3"><i class="bi bi-arrow-repeat"></i></div>
-              <h5 class="text-white mb-2">Ready to Synchronize?</h5>
+              <h5 class="text-dark mb-2">Ready to Synchronize?</h5>
               <p class="text-secondary small mb-3">Runs the file scanner to detect all newly added, modified, or removed files.</p>
-              <button class="btn btn-success btn-lg w-100 fw-bold" id="ftpSyncActionBtn">
+              <button class="btn btn-success btn-lg w-100 fw-bold shadow-sm" id="ftpSyncActionBtn">
                 <i class="bi bi-play-circle me-1"></i> Scan & Sync Filesystem Now
               </button>
-              <div id="syncReportBox" class="mt-3 text-start small font-monospace d-none p-2 bg-black rounded border border-secondary text-light" style="max-height: 140px; overflow-y: auto;"></div>
+              <div id="syncReportBox" class="mt-3 text-start small font-monospace d-none p-2 bg-white rounded border border-light-subtle text-dark" style="max-height: 140px; overflow-y: auto;"></div>
             </div>
           </div>
         </div>
@@ -257,27 +259,26 @@ include __DIR__ . '/includes/header.php';
   </div>
 
   <!-- Asset Management Table -->
-  <div class="card bg-dark border-secondary">
-    <div class="card-header border-secondary d-flex flex-wrap align-items-center justify-content-between gap-2 p-3">
-      <h5 class="text-white mb-0 d-flex align-items-center gap-2">
-        <i class="bi bi-collection-play-fill text-warning"></i>
+  <div class="card bg-white border-light-subtle shadow-sm">
+    <div class="card-header border-bottom border-light-subtle bg-light d-flex flex-wrap align-items-center justify-content-between gap-2 p-3">
+      <h5 class="text-dark mb-0 d-flex align-items-center gap-2">
+        <i class="bi bi-collection-play-fill text-danger"></i>
         <span>Manage Assets</span>
-        <span class="badge bg-secondary-subtle text-light small"><?= count($assetsList) ?> Items</span>
+        <span class="badge bg-secondary-subtle text-dark small border"><?= count($assetsList) ?> Items</span>
       </h5>
 
       <!-- Filters Form -->
       <form method="GET" action="" class="d-flex flex-wrap gap-2">
-        <input type="text" name="q" class="form-control form-control-sm bg-black text-white border-secondary" placeholder="Search title or ID..." value="<?= h($searchFilter) ?>" style="width: 180px;">
+        <input type="text" name="q" class="form-control form-control-sm bg-white text-dark border-secondary-subtle" placeholder="Search title or ID..." value="<?= h($searchFilter) ?>" style="width: 180px;">
         
-        <select name="type" class="form-select form-select-sm bg-black text-white border-secondary" style="width: 120px;" onchange="this.form.submit()">
-          <option value="">All Types</option>
-          <option value="video" <?= $typeFilter === 'video' ? 'selected' : '' ?>>Videos</option>
-          <option value="image" <?= $typeFilter === 'image' ? 'selected' : '' ?>>Images</option>
-          <option value="document" <?= $typeFilter === 'document' ? 'selected' : '' ?>>Documents</option>
-          <option value="archive" <?= $typeFilter === 'archive' ? 'selected' : '' ?>>Archives</option>
+        <select name="type" class="form-select form-select-sm bg-white text-dark border-secondary-subtle" style="width: 140px;" onchange="this.form.submit()">
+          <option value="">All 3 Categories</option>
+          <option value="video" <?= $typeFilter === 'video' ? 'selected' : '' ?>>1. Videos</option>
+          <option value="image" <?= $typeFilter === 'image' ? 'selected' : '' ?>>2. Images</option>
+          <option value="docs_zips" <?= $typeFilter === 'docs_zips' ? 'selected' : '' ?>>3. Docs & Zips</option>
         </select>
 
-        <select name="source" class="form-select form-select-sm bg-black text-white border-secondary" style="width: 130px;" onchange="this.form.submit()">
+        <select name="source" class="form-select form-select-sm bg-white text-dark border-secondary-subtle" style="width: 130px;" onchange="this.form.submit()">
           <option value="">All Sources</option>
           <option value="web_upload" <?= $sourceFilter === 'web_upload' ? 'selected' : '' ?>>Web Upload</option>
           <option value="ftp_sync" <?= $sourceFilter === 'ftp_sync' ? 'selected' : '' ?>>FTP Sync</option>
@@ -292,9 +293,9 @@ include __DIR__ . '/includes/header.php';
     </div>
 
     <div class="table-responsive">
-      <table class="table table-dark table-hover mb-0 align-middle">
-        <thead>
-          <tr class="border-secondary text-secondary small text-uppercase">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr class="text-secondary small text-uppercase">
             <th scope="col" style="width: 70px;">Asset</th>
             <th scope="col">Title & ID</th>
             <th scope="col">Category</th>
@@ -321,7 +322,7 @@ include __DIR__ . '/includes/header.php';
               $streamUrl = "{$baseUrl}/stream.php?v={$asset['id']}";
               $thumb = $asset['thumbnail_path'] ? "{$baseUrl}/" . ltrim($asset['thumbnail_path'], '/') : ($isImage ? $rawUrl : '');
               if (!$thumb) {
-                $thumb = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='45' viewBox='0 0 80 45'><rect width='80' height='45' fill='%23222'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23aaa' font-size='10'>" . strtoupper($asset['extension']) . "</text></svg>";
+                $thumb = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='45' viewBox='0 0 80 45'><rect width='80' height='45' fill='%23f0f0f0'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23666' font-size='10'>" . strtoupper($asset['extension']) . "</text></svg>";
               }
 
               $embedTag = $isVideo 
@@ -332,9 +333,9 @@ include __DIR__ . '/includes/header.php';
                 'id'          => $asset['id'],
                 'title'       => $asset['title'],
                 'watchUrl'    => $watchUrl,
-                'cdnUrl'      => $isVideo ? $streamUrl : $rawCdnUrl,
+                'cdnUrl'      => $isVideo ? $streamUrl : $rawUrl,
                 'embedTag'    => $embedTag,
-                'markdownTag' => "![" . h($asset['title']) . "]({$rawCdnUrl})"
+                'markdownTag' => "![" . h($asset['title']) . "]({$rawUrl})"
               ]);
 
               // Fetch tags for edit modal
@@ -352,17 +353,17 @@ include __DIR__ . '/includes/header.php';
                 'tags'        => $assetTags,
               ]);
             ?>
-              <tr class="border-secondary">
+              <tr>
                 <td>
-                  <a href="<?= $watchUrl ?>" target="_blank" style="display: block; width: 64px; aspect-ratio: 16/9; border-radius: 4px; overflow: hidden; background: #000;">
+                  <a href="<?= $watchUrl ?>" target="_blank" style="display: block; width: 64px; aspect-ratio: 16/9; border-radius: 4px; overflow: hidden; background: #e0e0e0;">
                     <img src="<?= $thumb ?>" alt="" style="width: 100%; height: 100%; object-fit: cover;">
                   </a>
                 </td>
                 <td>
-                  <div class="fw-bold text-white"><?= h($asset['title']) ?></div>
+                  <div class="fw-bold text-dark"><?= h($asset['title']) ?></div>
                   <div class="small text-secondary font-monospace">ID: <?= $asset['id'] ?> • <?= h($asset['file_name']) ?></div>
                 </td>
-                <td><span class="badge bg-secondary-subtle text-light"><?= h($asset['category_name'] ?: 'General') ?></span></td>
+                <td><span class="badge bg-light text-dark border"><?= h($asset['category_name'] ?: 'General') ?></span></td>
                 <td><span class="small font-monospace"><?= formatBytes((float)$asset['file_size']) ?></span></td>
                 <td>
                   <?php if ($asset['source'] === 'web_upload'): ?>
@@ -381,7 +382,7 @@ include __DIR__ . '/includes/header.php';
                     <button class="btn btn-outline-info" data-share-asset='<?= htmlspecialchars($shareData, ENT_QUOTES) ?>' title="Share / Embed">
                       <i class="bi bi-share"></i>
                     </button>
-                    <a href="<?= $watchUrl ?>" target="_blank" class="btn btn-outline-light" title="Watch / View">
+                    <a href="<?= $watchUrl ?>" target="_blank" class="btn btn-outline-secondary" title="Watch / View">
                       <i class="bi bi-box-arrow-up-right"></i>
                     </a>
                     <button class="btn btn-outline-danger delete-asset-btn" data-id="<?= $asset['id'] ?>" data-title="<?= h($asset['title']) ?>" title="Delete">
@@ -402,27 +403,27 @@ include __DIR__ . '/includes/header.php';
 <!-- EDIT ASSET MODAL -->
 <div class="modal fade" id="editAssetModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content bg-dark text-white border-secondary">
+    <div class="modal-content bg-white text-dark border-light-subtle shadow">
       <form id="editAssetForm" enctype="multipart/form-data">
-        <div class="modal-header border-secondary">
+        <div class="modal-header border-bottom border-light-subtle">
           <h5 class="modal-title d-flex align-items-center gap-2">
             <i class="bi bi-pencil-square text-warning"></i>
             <span>Edit Asset Metadata</span>
           </h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <input type="hidden" name="id" id="editAssetId">
 
           <div class="mb-3">
             <label class="form-label text-secondary small fw-bold">Title</label>
-            <input type="text" name="title" id="editTitle" class="form-control bg-black text-white border-secondary" required>
+            <input type="text" name="title" id="editTitle" class="form-control bg-light text-dark border-secondary-subtle" required>
           </div>
 
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label class="form-label text-secondary small fw-bold">Category</label>
-              <select name="category_id" id="editCategory" class="form-select bg-black text-white border-secondary">
+              <select name="category_id" id="editCategory" class="form-select bg-light text-dark border-secondary-subtle">
                 <option value="">None / General</option>
                 <?php foreach ($categories as $cat): ?>
                   <option value="<?= $cat['id'] ?>"><?= h($cat['name']) ?></option>
@@ -432,7 +433,7 @@ include __DIR__ . '/includes/header.php';
 
             <div class="col-md-6">
               <label class="form-label text-secondary small fw-bold">Visibility</label>
-              <select name="is_public" id="editVisibility" class="form-select bg-black text-white border-secondary">
+              <select name="is_public" id="editVisibility" class="form-select bg-light text-dark border-secondary-subtle">
                 <option value="1">Public (Visible in Showcase Feed)</option>
                 <option value="0">Unlisted (Direct Link / Embed Only)</option>
               </select>
@@ -441,22 +442,22 @@ include __DIR__ . '/includes/header.php';
 
           <div class="mb-3">
             <label class="form-label text-secondary small fw-bold">Description (Timestamps like 01:23 will become clickable chapters)</label>
-            <textarea name="description" id="editDesc" class="form-control bg-black text-white border-secondary" rows="4"></textarea>
+            <textarea name="description" id="editDesc" class="form-control bg-light text-dark border-secondary-subtle" rows="4"></textarea>
           </div>
 
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label class="form-label text-secondary small fw-bold">Custom Thumbnail (Replace existing)</label>
-              <input type="file" name="thumbnail" accept="image/*" class="form-control bg-black text-white border-secondary">
+              <input type="file" name="thumbnail" accept="image/*" class="form-control bg-light text-dark border-secondary-subtle">
             </div>
 
             <div class="col-md-6">
               <label class="form-label text-secondary small fw-bold">Tags (Comma-separated)</label>
-              <input type="text" name="tags" id="editTags" class="form-control bg-black text-white border-secondary">
+              <input type="text" name="tags" id="editTags" class="form-control bg-light text-dark border-secondary-subtle">
             </div>
           </div>
         </div>
-        <div class="modal-footer border-secondary">
+        <div class="modal-footer border-top border-light-subtle">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-warning btn-sm" id="saveEditBtn">
             <i class="bi bi-save me-1"></i> Save Changes
@@ -470,10 +471,10 @@ include __DIR__ . '/includes/header.php';
 <!-- DELETE CONFIRMATION MODAL -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content bg-dark text-white border-danger">
-      <div class="modal-header border-danger">
+    <div class="modal-content bg-white text-dark border-danger-subtle shadow">
+      <div class="modal-header border-danger-subtle">
         <h5 class="modal-title text-danger"><i class="bi bi-trash-fill me-2"></i>Delete Asset</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <p>Are you sure you want to remove <strong id="deleteAssetTitle"></strong>?</p>
@@ -484,7 +485,7 @@ include __DIR__ . '/includes/header.php';
           </label>
         </div>
       </div>
-      <div class="modal-footer border-secondary">
+      <div class="modal-footer border-top border-light-subtle">
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-danger btn-sm" id="confirmDeleteBtn">Delete</button>
       </div>
@@ -511,16 +512,16 @@ fileInput.addEventListener('change', () => {
 
 dropZone.addEventListener('dragover', (e) => {
   e.preventDefault();
-  dropZone.classList.add('bg-secondary', 'bg-opacity-25');
+  dropZone.classList.add('bg-secondary-subtle');
 });
 
 dropZone.addEventListener('dragleave', () => {
-  dropZone.classList.remove('bg-secondary', 'bg-opacity-25');
+  dropZone.classList.remove('bg-secondary-subtle');
 });
 
 dropZone.addEventListener('drop', (e) => {
   e.preventDefault();
-  dropZone.classList.remove('bg-secondary', 'bg-opacity-25');
+  dropZone.classList.remove('bg-secondary-subtle');
   if (e.dataTransfer.files.length > 0) {
     fileInput.files = e.dataTransfer.files;
     fileInput.dispatchEvent(new Event('change'));

@@ -1,23 +1,24 @@
 /**
- * YouTube Dark Theme & Player Styles for Showcase Tube
- * Built on Bootstrap 5.3 Dark Mode
+ * YouTube Light Theme & Player Styles for Showcase Tube
+ * Built on Bootstrap 5.3 Light Mode
  */
 
 :root {
-  --yt-bg: #0f0f0f;
-  --yt-surface: #181818;
-  --yt-surface-hover: #272727;
-  --yt-border: #2c2c2c;
+  --yt-bg: #f9f9f9;
+  --yt-surface: #ffffff;
+  --yt-surface-hover: #f2f2f2;
+  --yt-border: #e5e5e5;
   --yt-red: #ff0000;
   --yt-red-hover: #cc0000;
-  --yt-text: #f1f1f1;
-  --yt-text-muted: #aaaaaa;
+  --yt-text: #0f0f0f;
+  --yt-text-muted: #606060;
   --sidebar-width: 240px;
   --sidebar-mini-width: 72px;
   --topbar-height: 56px;
 }
 
-body[data-bs-theme="dark"] {
+body,
+body[data-bs-theme="light"] {
   background-color: var(--yt-bg) !important;
   color: var(--yt-text) !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -33,8 +34,9 @@ body[data-bs-theme="dark"] {
   left: 0;
   right: 0;
   height: var(--topbar-height);
-  background-color: var(--yt-bg);
+  background-color: var(--yt-surface);
   border-bottom: 1px solid var(--yt-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   z-index: 1040;
   display: flex;
   align-items: center;
@@ -46,11 +48,15 @@ body[data-bs-theme="dark"] {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #fff;
+  color: var(--yt-text);
   text-decoration: none;
   font-weight: 700;
   letter-spacing: -0.5px;
   font-size: 1.15rem;
+}
+
+.yt-brand:hover {
+  color: var(--yt-text);
 }
 
 .yt-logo-badge {
@@ -71,38 +77,39 @@ body[data-bs-theme="dark"] {
 
 .yt-search-group {
   display: flex;
-  border: 1px solid var(--yt-border);
+  border: 1px solid #ccc;
   border-radius: 40px;
   overflow: hidden;
-  background-color: #121212;
-  transition: border-color 0.2s ease;
+  background-color: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .yt-search-group:focus-within {
-  border-color: #3ea6ff;
+  border-color: #065fd4;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 .yt-search-input {
   background: transparent !important;
   border: none !important;
-  color: #fff !important;
+  color: #0f0f0f !important;
   box-shadow: none !important;
   padding-left: 1.25rem;
   font-size: 0.95rem;
 }
 
 .yt-search-btn {
-  background-color: #222222 !important;
+  background-color: #f8f8f8 !important;
   border: none !important;
-  border-left: 1px solid var(--yt-border) !important;
-  color: #aaa !important;
+  border-left: 1px solid #ccc !important;
+  color: #555 !important;
   padding: 0.5rem 1.25rem !important;
   border-radius: 0 40px 40px 0 !important;
 }
 
 .yt-search-btn:hover {
-  background-color: #2b2b2b !important;
-  color: #fff !important;
+  background-color: #f0f0f0 !important;
+  color: #000 !important;
 }
 
 /* ==========================================================================
@@ -114,7 +121,7 @@ body[data-bs-theme="dark"] {
   left: 0;
   bottom: 0;
   width: var(--sidebar-width);
-  background-color: var(--yt-bg);
+  background-color: var(--yt-surface);
   border-right: 1px solid var(--yt-border);
   overflow-y: auto;
   z-index: 1030;
@@ -173,12 +180,12 @@ body.sidebar-collapsed .yt-main-content {
 
 .yt-sidebar .nav-link:hover {
   background-color: var(--yt-surface-hover);
-  color: #fff;
+  color: #0f0f0f;
 }
 
 .yt-sidebar .nav-link.active {
-  background-color: #272727;
-  color: #fff;
+  background-color: #e5e5e5;
+  color: #0f0f0f;
   font-weight: 600;
 }
 
@@ -214,7 +221,7 @@ body.sidebar-collapsed .yt-main-content {
 }
 
 .yt-chip {
-  background-color: var(--yt-surface);
+  background-color: #f2f2f2;
   color: var(--yt-text);
   border: 1px solid var(--yt-border);
   border-radius: 8px;
@@ -229,15 +236,15 @@ body.sidebar-collapsed .yt-main-content {
 }
 
 .yt-chip:hover {
-  background-color: var(--yt-surface-hover);
-  color: #fff;
+  background-color: #e5e5e5;
+  color: #0f0f0f;
 }
 
 .yt-chip.active {
-  background-color: #fff;
-  color: #0f0f0f;
+  background-color: #0f0f0f;
+  color: #ffffff;
   font-weight: 600;
-  border-color: #fff;
+  border-color: #0f0f0f;
 }
 
 /* ==========================================================================
@@ -263,10 +270,10 @@ body.sidebar-collapsed .yt-main-content {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  background-color: #1e1e1e;
+  background-color: #e0e0e0;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .yt-thumb-wrapper img {
@@ -327,13 +334,14 @@ body.sidebar-collapsed .yt-main-content {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #272727;
+  background: #f0f0f0;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1rem;
-  color: #fff;
+  color: #0f0f0f;
   flex-shrink: 0;
+  border: 1px solid #e0e0e0;
 }
 
 .yt-card-info {
@@ -345,7 +353,7 @@ body.sidebar-collapsed .yt-main-content {
   font-size: 0.95rem;
   font-weight: 600;
   line-height: 1.35;
-  color: #f1f1f1;
+  color: #0f0f0f;
   margin-bottom: 0.3rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -375,7 +383,7 @@ body.sidebar-collapsed .yt-main-content {
   background-color: #000;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   user-select: none;
 }
 
@@ -477,7 +485,7 @@ body.sidebar-collapsed .yt-main-content {
 .yt-scrub-tooltip {
   position: absolute;
   bottom: 24px;
-  background-color: rgba(0,0,0,0.85);
+  background-color: rgba(0, 0, 0, 0.85);
   color: #fff;
   padding: 2px 6px;
   border-radius: 4px;
@@ -541,7 +549,8 @@ body.sidebar-collapsed .yt-main-content {
 
 /* Watch Description Box */
 .yt-desc-box {
-  background-color: #272727;
+  background-color: #f2f2f2;
+  color: #0f0f0f;
   border-radius: 12px;
   padding: 1rem;
   margin-top: 1rem;
@@ -549,10 +558,11 @@ body.sidebar-collapsed .yt-main-content {
   line-height: 1.5;
   cursor: pointer;
   position: relative;
+  border: 1px solid #e5e5e5;
 }
 
 .yt-desc-box:hover {
-  background-color: #313131;
+  background-color: #e8e8e8;
 }
 
 .yt-desc-text.collapsed {
@@ -563,12 +573,22 @@ body.sidebar-collapsed .yt-main-content {
 }
 
 .timestamp-link {
-  color: #3ea6ff;
+  color: #065fd4;
   text-decoration: none;
   font-weight: 600;
 }
 .timestamp-link:hover {
   text-decoration: underline;
+}
+
+/* Light Card & Table overrides */
+.card {
+  background-color: var(--yt-surface) !important;
+  border-color: var(--yt-border) !important;
+}
+
+.table {
+  color: var(--yt-text) !important;
 }
 
 /* Responsive adjustments */

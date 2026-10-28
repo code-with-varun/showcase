@@ -1,6 +1,6 @@
 <?php
 /**
- * Showcase Tube - YouTube-style Media Vault & Streaming App
+ * Showcase Tube - YouTube-style Media Vault & Streaming App (Light Theme)
  * Structured into 3 clear categories:
  * 1. Videos (Video first!)
  * 2. Images & Panels
@@ -82,7 +82,7 @@ include __DIR__ . '/includes/header.php';
 
     <a href="<?= $baseUrl ?>/index.php?type=video<?= $searchQ ? '&q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'video') ? 'active' : '' ?>">
       <i class="bi bi-play-circle-fill text-danger"></i> 1. Videos
-      <span class="badge bg-secondary ms-1"><?= count($videosList) + ($activeType !== 'all' && $activeType !== 'video' ? 0 : 0) ?></span>
+      <span class="badge bg-secondary ms-1"><?= count($videosList) ?></span>
     </a>
 
     <a href="<?= $baseUrl ?>/index.php?type=image<?= $searchQ ? '&q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'image') ? 'active' : '' ?>">
@@ -98,9 +98,9 @@ include __DIR__ . '/includes/header.php';
 
   <!-- Search Results Header (if searching) -->
   <?php if ($searchQ !== ''): ?>
-    <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom border-secondary">
+    <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom border-light-subtle">
       <div>
-        <h4 class="text-white mb-0">Search results for <span class="text-danger">"<?= h($searchQ) ?>"</span></h4>
+        <h4 class="text-dark mb-0">Search results for <span class="text-danger">"<?= h($searchQ) ?>"</span></h4>
         <small class="text-secondary"><?= count($allAssets) ?> total matching items found</small>
       </div>
       <a href="<?= $baseUrl ?>/index.php<?= $activeType !== 'all' ? '?type=' . urlencode($activeType) : '' ?>" class="btn btn-outline-secondary btn-sm">
@@ -115,10 +115,10 @@ include __DIR__ . '/includes/header.php';
   <?php if ($activeType === 'all' || $activeType === 'video'): ?>
     <section class="mb-5" id="videosSection">
       <div class="d-flex align-items-center justify-content-between mb-3">
-        <h4 class="text-white mb-0 d-flex align-items-center gap-2">
+        <h4 class="text-dark mb-0 d-flex align-items-center gap-2">
           <i class="bi bi-play-btn-fill text-danger"></i>
           <span>Videos</span>
-          <span class="badge bg-danger-subtle text-danger small"><?= count($videosList) ?></span>
+          <span class="badge bg-danger text-white small"><?= count($videosList) ?></span>
         </h4>
         <?php if ($activeType === 'all' && count($videosList) > 0): ?>
           <a href="<?= $baseUrl ?>/index.php?type=video" class="text-secondary text-decoration-none small">View only videos &rarr;</a>
@@ -126,8 +126,8 @@ include __DIR__ . '/includes/header.php';
       </div>
 
       <?php if (empty($videosList)): ?>
-        <div class="p-4 rounded-3 border border-secondary bg-dark text-center text-secondary">
-          <i class="bi bi-camera-video display-6 d-block mb-2 text-secondary"></i>
+        <div class="p-4 rounded-3 border border-light-subtle bg-white text-center text-secondary shadow-sm">
+          <i class="bi bi-camera-video display-6 d-block mb-2 text-muted"></i>
           <div>No videos found <?= $searchQ ? 'matching "' . h($searchQ) . '"' : 'yet' ?>.</div>
           <div class="small mt-1">Upload via <a href="<?= $baseUrl ?>/studio.php" class="text-danger">Studio</a> or drop MP4/WebM files into <code>assets/videos/</code> and click Sync.</div>
         </div>
@@ -139,7 +139,7 @@ include __DIR__ . '/includes/header.php';
             $rawCdnUrl = "{$baseUrl}/" . ltrim($vid['file_path'], '/');
             $thumbUrl  = $vid['thumbnail_path'] ? "{$baseUrl}/" . ltrim($vid['thumbnail_path'], '/') : '';
             if (!$thumbUrl) {
-                $thumbUrl = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'><rect width='640' height='360' fill='%237f1d1d'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff' font-size='48' font-family='sans-serif'>VIDEO</text></svg>";
+                $thumbUrl = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'><rect width='640' height='360' fill='%23e0e0e0'/><circle cx='320' cy='180' r='48' fill='%23cc0000'/><polygon points='310,160 340,180 310,200' fill='%23ffffff'/></svg>";
             }
 
             $embedTag = "<iframe src=\"{$baseUrl}/embed.php?v={$vid['id']}\" width=\"100%\" height=\"450\" frameborder=\"0\" allowfullscreen></iframe>";
@@ -181,7 +181,7 @@ include __DIR__ . '/includes/header.php';
                           <button class="btn btn-link text-secondary p-0" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-three-dots-vertical"></i>
                           </button>
-                          <ul class="dropdown-menu dropdown-menu-end shadow">
+                          <ul class="dropdown-menu dropdown-menu-end shadow-sm border-light-subtle">
                             <li><a class="dropdown-item" href="<?= $watchUrl ?>"><i class="bi bi-play-btn me-2"></i>Watch Video</a></li>
                             <li><a class="dropdown-item" href="#" data-share-asset='<?= htmlspecialchars($shareData, ENT_QUOTES) ?>'><i class="bi bi-share me-2"></i>Share & Embed</a></li>
                             <li><a class="dropdown-item" href="<?= $streamUrl ?>" download><i class="bi bi-download me-2"></i>Download MP4</a></li>
@@ -209,7 +209,7 @@ include __DIR__ . '/includes/header.php';
   <?php if ($activeType === 'all' || $activeType === 'image'): ?>
     <section class="mb-5" id="imagesSection">
       <div class="d-flex align-items-center justify-content-between mb-3">
-        <h4 class="text-white mb-0 d-flex align-items-center gap-2">
+        <h4 class="text-dark mb-0 d-flex align-items-center gap-2">
           <i class="bi bi-images text-info"></i>
           <span>Images & Artwork</span>
           <span class="badge bg-info-subtle text-info small"><?= count($imagesList) ?></span>
@@ -220,8 +220,8 @@ include __DIR__ . '/includes/header.php';
       </div>
 
       <?php if (empty($imagesList)): ?>
-        <div class="p-4 rounded-3 border border-secondary bg-dark text-center text-secondary">
-          <i class="bi bi-image display-6 d-block mb-2 text-secondary"></i>
+        <div class="p-4 rounded-3 border border-light-subtle bg-white text-center text-secondary shadow-sm">
+          <i class="bi bi-image display-6 d-block mb-2 text-muted"></i>
           <div>No images found <?= $searchQ ? 'matching "' . h($searchQ) . '"' : 'yet' ?>.</div>
           <div class="small mt-1">Drop image files into <code>assets/images/</code> or <code>assets/motion-comics/</code> and click Sync.</div>
         </div>
@@ -239,8 +239,8 @@ include __DIR__ . '/includes/header.php';
             ]);
           ?>
             <div class="col">
-              <div class="card bg-dark border-secondary h-100 overflow-hidden shadow-sm">
-                <div class="position-relative" style="aspect-ratio: 16/9; background: #000; overflow: hidden; cursor: pointer;" onclick="openImageLightbox('<?= $rawUrl ?>', '<?= addslashes(h($img['title'])) ?>', '<?= formatBytes((float)$img['file_size']) ?>')">
+              <div class="card bg-white border-light-subtle h-100 overflow-hidden shadow-sm">
+                <div class="position-relative" style="aspect-ratio: 16/9; background: #f0f0f0; overflow: hidden; cursor: pointer;" onclick="openImageLightbox('<?= $rawUrl ?>', '<?= addslashes(h($img['title'])) ?>', '<?= formatBytes((float)$img['file_size']) ?>')">
                   <img src="<?= $rawUrl ?>" alt="<?= h($img['title']) ?>" class="w-100 h-100" style="object-fit: cover;">
                   <span class="badge bg-black bg-opacity-75 text-light position-absolute bottom-0 end-0 m-2 small font-monospace">
                     <?= strtoupper($img['extension']) ?> • <?= formatBytes((float)$img['file_size']) ?>
@@ -248,7 +248,7 @@ include __DIR__ . '/includes/header.php';
                 </div>
                 <div class="card-body p-2 d-flex align-items-center justify-content-between">
                   <div class="text-truncate me-2">
-                    <small class="fw-bold text-white d-block text-truncate" title="<?= h($img['title']) ?>"><?= h($img['title']) ?></small>
+                    <small class="fw-bold text-dark d-block text-truncate" title="<?= h($img['title']) ?>"><?= h($img['title']) ?></small>
                     <small class="text-secondary" style="font-size: 0.75rem;"><?= timeAgo($img['created_at']) ?></small>
                   </div>
                   <div class="btn-group btn-group-sm">
@@ -274,10 +274,10 @@ include __DIR__ . '/includes/header.php';
   <?php if ($activeType === 'all' || $activeType === 'docs_zips' || $activeType === 'document' || $activeType === 'archive'): ?>
     <section class="mb-5" id="docsZipsSection">
       <div class="d-flex align-items-center justify-content-between mb-3">
-        <h4 class="text-white mb-0 d-flex align-items-center gap-2">
+        <h4 class="text-dark mb-0 d-flex align-items-center gap-2">
           <i class="bi bi-archive-fill text-warning"></i>
           <span>Documents & Zips</span>
-          <span class="badge bg-warning-subtle text-warning small"><?= count($docsZipsList) ?></span>
+          <span class="badge bg-warning text-dark small"><?= count($docsZipsList) ?></span>
         </h4>
         <?php if ($activeType === 'all' && count($docsZipsList) > 0): ?>
           <a href="<?= $baseUrl ?>/index.php?type=docs_zips" class="text-secondary text-decoration-none small">View only documents & zips &rarr;</a>
@@ -285,17 +285,17 @@ include __DIR__ . '/includes/header.php';
       </div>
 
       <?php if (empty($docsZipsList)): ?>
-        <div class="p-4 rounded-3 border border-secondary bg-dark text-center text-secondary">
-          <i class="bi bi-folder-x display-6 d-block mb-2 text-secondary"></i>
+        <div class="p-4 rounded-3 border border-light-subtle bg-white text-center text-secondary shadow-sm">
+          <i class="bi bi-folder-x display-6 d-block mb-2 text-muted"></i>
           <div>No documents or zip bundles found <?= $searchQ ? 'matching "' . h($searchQ) . '"' : 'yet' ?>.</div>
           <div class="small mt-1">Place files in <code>assets/documents/</code> or <code>assets/archives/</code> and click Sync.</div>
         </div>
       <?php else: ?>
-        <div class="card bg-dark border-secondary">
+        <div class="card bg-white border-light-subtle shadow-sm">
           <div class="table-responsive">
-            <table class="table table-dark table-hover mb-0 align-middle">
-              <thead>
-                <tr class="border-secondary text-secondary small text-uppercase">
+            <table class="table table-hover mb-0 align-middle">
+              <thead class="table-light">
+                <tr class="text-secondary small text-uppercase">
                   <th scope="col" style="width: 50px;">Format</th>
                   <th scope="col">Title & Filename</th>
                   <th scope="col">File Size</th>
@@ -324,15 +324,15 @@ include __DIR__ . '/includes/header.php';
                     'markdownTag' => "[" . h($doc['title']) . "]({$rawUrl})"
                   ]);
                 ?>
-                  <tr class="border-secondary">
+                  <tr>
                     <td class="text-center">
                       <i class="bi <?= $iconClass ?>" style="font-size: 1.5rem;"></i>
                     </td>
                     <td>
-                      <div class="fw-bold text-white"><?= h($doc['title']) ?></div>
+                      <div class="fw-bold text-dark"><?= h($doc['title']) ?></div>
                       <div class="small text-secondary font-monospace"><?= h($doc['file_name']) ?></div>
                     </td>
-                    <td><span class="badge bg-secondary-subtle text-light"><?= formatBytes((float)$doc['file_size']) ?></span></td>
+                    <td><span class="badge bg-light text-dark border"><?= formatBytes((float)$doc['file_size']) ?></span></td>
                     <td><span class="text-secondary small"><?= timeAgo($doc['created_at']) ?></span></td>
                     <td class="text-end">
                       <div class="btn-group btn-group-sm">
@@ -364,15 +364,15 @@ include __DIR__ . '/includes/header.php';
 <!-- Lightbox Modal for Images -->
 <div class="modal fade" id="imageLightboxModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-xl">
-    <div class="modal-content bg-black border-secondary">
-      <div class="modal-header border-secondary p-2 px-3">
-        <h6 class="modal-title text-white" id="lightboxTitle">Image Preview</h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content bg-white text-dark border-light-subtle shadow">
+      <div class="modal-header border-bottom border-light-subtle p-2 px-3">
+        <h6 class="modal-title text-dark" id="lightboxTitle">Image Preview</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body p-0 text-center bg-black d-flex align-items-center justify-content-center" style="min-height: 60vh;">
+      <div class="modal-body p-0 text-center bg-light d-flex align-items-center justify-content-center" style="min-height: 60vh;">
         <img id="lightboxImg" src="" alt="Preview" style="max-width: 100%; max-height: 80vh; object-fit: contain;">
       </div>
-      <div class="modal-footer border-secondary d-flex justify-content-between">
+      <div class="modal-footer border-top border-light-subtle d-flex justify-content-between">
         <span class="text-secondary small" id="lightboxSize"></span>
         <div>
           <button class="btn btn-outline-info btn-sm copy-btn" id="lightboxCopyBtn" data-copy="">Copy Direct CDN Link</button>
@@ -386,10 +386,10 @@ include __DIR__ . '/includes/header.php';
 <!-- Inline PDF Preview Modal -->
 <div class="modal fade" id="pdfPreviewModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-fullscreen">
-    <div class="modal-content bg-black">
-      <div class="modal-header border-secondary p-2 px-3">
-        <h6 class="modal-title text-white" id="pdfModalTitle">PDF Preview</h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content bg-white">
+      <div class="modal-header border-bottom border-light-subtle p-2 px-3">
+        <h6 class="modal-title text-dark" id="pdfModalTitle">PDF Preview</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body p-0">
         <iframe id="pdfFrame" src="" style="width: 100%; height: 100%; border: none;"></iframe>
