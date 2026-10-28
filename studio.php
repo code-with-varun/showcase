@@ -92,11 +92,17 @@ include __DIR__ . '/includes/header.php';
       <p class="text-secondary small mb-0">Dual upload engine: direct browser upload or FTP file drop with one-click filesystem sync.</p>
     </div>
 
-    <!-- Quick Sync CTA -->
-    <button class="btn btn-danger d-flex align-items-center gap-2 px-3 py-2 fw-semibold" id="studioSyncBtn">
-      <i class="bi bi-arrow-repeat"></i>
-      <span>Sync Filesystem / FTP Drops</span>
-    </button>
+    <!-- Studio Header Actions -->
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <a href="<?= $baseUrl ?>/settings.php" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-3 py-2 fw-semibold shadow-sm">
+        <i class="bi bi-shield-lock-fill text-danger"></i>
+        <span>Settings & Password</span>
+      </a>
+      <button class="btn btn-danger d-flex align-items-center gap-2 px-3 py-2 fw-semibold shadow-sm" id="studioSyncBtn">
+        <i class="bi bi-arrow-repeat"></i>
+        <span>Sync Filesystem / FTP Drops</span>
+      </button>
+    </div>
   </div>
 
   <!-- Key Metrics Row -->

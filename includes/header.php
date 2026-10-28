@@ -69,7 +69,8 @@ $activePage = basename($_SERVER['PHP_SELF'], '.php');
           </button>
           <ul class="dropdown-menu dropdown-menu-end shadow-sm border-light-subtle">
             <li class="dropdown-header text-uppercase" style="font-size: 0.75rem;">Logged as Superadmin</li>
-            <li><a class="dropdown-item" href="<?= $baseUrl ?>/studio.php"><i class="bi bi-gear-fill me-2"></i>Creator Studio</a></li>
+            <li><a class="dropdown-item <?= ($activePage === 'studio') ? 'active' : '' ?>" href="<?= $baseUrl ?>/studio.php"><i class="bi bi-cpu-fill me-2"></i>Creator Studio</a></li>
+            <li><a class="dropdown-item <?= ($activePage === 'settings') ? 'active' : '' ?>" href="<?= $baseUrl ?>/settings.php"><i class="bi bi-shield-lock-fill me-2"></i>Settings & Password</a></li>
             <li><a class="dropdown-item" href="#" id="quickSyncBtn"><i class="bi bi-arrow-repeat me-2"></i>Sync Filesystem</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item text-danger" href="<?= $baseUrl ?>/logout.php"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</a></li>

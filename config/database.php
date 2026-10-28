@@ -39,12 +39,11 @@ function getDB(): PDO {
 }
 
 /**
- * Ensure Superadmin exists with password 'ChangeMe@123'
+ * Ensure Superadmin exists with password 'ChangeMe@123' if no user exists
  */
 function ensureAdminUser(PDO $pdo): void {
-    $stmt = $pdo->prepare("SELECT id FROM users WHERE username = 'superadmin' LIMIT 1");
-    $stmt->execute();
-    if (!$stmt->fetch()) {
+    $count = (int)$pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+    if ($count === 0) {
         $hash = password_hash('ChangeMe@123', PASSWORD_BCRYPT);
         $insert = $pdo->prepare("INSERT INTO users (username, password_hash, role) VALUES ('superadmin', :hash, 'superadmin')");
         $insert->execute([':hash' => $hash]);

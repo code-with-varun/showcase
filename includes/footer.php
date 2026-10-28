@@ -21,7 +21,11 @@
           <?php if (isAdminLoggedIn()): ?>
             <span class="text-muted">•</span>
             <a href="<?= $baseUrl ?>/studio.php" class="text-danger text-decoration-none fw-semibold">
-              <i class="bi bi-gear-fill me-1"></i>Studio
+              <i class="bi bi-cpu me-1"></i>Studio
+            </a>
+            <span class="text-muted">•</span>
+            <a href="<?= $baseUrl ?>/settings.php" class="text-secondary text-decoration-none">
+              <i class="bi bi-shield-lock me-1"></i>Settings
             </a>
           <?php endif; ?>
         </div>
