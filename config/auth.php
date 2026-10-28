@@ -1,7 +1,7 @@
 <?php
 /**
  * Authentication & Session Management
- * Admin protection for Showcase Tube
+ * Admin protection for Runit Showcase
  */
 
 if (session_status() === PHP_SESSION_NONE) {

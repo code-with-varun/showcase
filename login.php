@@ -35,7 +35,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Superadmin Sign In - Showcase Tube</title>
+  <title>Superadmin Sign In - Runit Showcase</title>
+  <link rel="icon" type="image/png" href="<?= $baseUrl ?>/public/Runit%20logo%20pack/app-icon-red.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="<?= $baseUrl ?>/css/youtube.css">
@@ -63,9 +64,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <div class="login-card">
     <div class="text-center mb-4">
-      <a href="<?= $baseUrl ?>/index.php" class="yt-brand justify-content-center mb-2">
-        <span class="yt-logo-badge"><i class="bi bi-play-fill"></i></span>
-        <span>SHOWCASE<span style="color: var(--yt-red);">TUBE</span></span>
+      <a href="<?= $baseUrl ?>/index.php" class="yt-brand d-inline-flex align-items-center gap-2 justify-content-center mb-2 text-decoration-none">
+        <img src="<?= $baseUrl ?>/public/Runit%20logo%20pack/app-icon-red.png" alt="Runit" height="38" class="rounded">
+        <span class="brand-text text-dark fw-bold fs-4" style="letter-spacing: -0.5px;">RUNIT <span style="color: #d6111a; font-weight: 800;">SHOWCASE</span></span>
       </a>
       <h4 class="text-dark mt-3 mb-1">Superadmin Access</h4>
       <p class="text-secondary small">Sign in to manage your asset repository, uploads, and CDN.</p>

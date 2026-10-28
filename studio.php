@@ -1,7 +1,7 @@
 <?php
 /**
  * Creator Studio & Asset Management Center (Light Theme)
- * Showcase Tube & Media CDN Vault
+ * Runit Showcase & Media CDN Vault
  */
 
 require_once __DIR__ . '/config/database.php';

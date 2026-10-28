@@ -11,7 +11,7 @@ if (php_sapi_name() !== 'cli') {
 require_once __DIR__ . '/../includes/SyncManager.php';
 
 echo "========================================================\n";
-echo " Showcase Tube & Asset CDN - Filesystem Sync Engine     \n";
+echo " Runit Showcase & Asset CDN - Filesystem Sync Engine     \n";
 echo "========================================================\n";
 echo "Scanning assets directory: " . ASSETS_DIR . " ...\n";
 

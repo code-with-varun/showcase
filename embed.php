@@ -80,8 +80,8 @@ $mute      = (isset($_GET['mute']) && $_GET['mute'] == '1');
 <body data-bs-theme="dark">
 
   <div class="embed-player-wrapper">
-    <a href="<?= $watchUrl ?>" target="_blank" rel="noopener" class="embed-watermark">
-      <i class="bi bi-play-fill text-danger"></i> SHOWCASE<span style="color: #ff0000;">TUBE</span>
+    <a href="<?= $watchUrl ?>" target="_blank" rel="noopener" class="embed-watermark d-flex align-items-center gap-1">
+      <img src="<?= $baseUrl ?>/public/Runit%20logo%20pack/app-icon-red.png" alt="Runit" height="18" class="rounded-1"> RUNIT <span style="color: #ff4d4f;">SHOWCASE</span>
     </a>
 
     <?php if ($asset['asset_type'] === 'video'): ?>

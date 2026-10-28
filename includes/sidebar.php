@@ -67,7 +67,7 @@ $currentType = $_GET['type'] ?? '';
       </div>
       <div><strong><?= (int)$sidebarStats['total_files'] ?></strong> Total Assets</div>
       <div><strong><?= formatBytes((float)$sidebarStats['total_size']) ?></strong> Stored</div>
-      <div class="mt-2 text-muted" style="font-size: 0.7rem;">&copy; <?= date('Y') ?> Showcase Tube</div>
+      <div class="mt-2 text-muted" style="font-size: 0.7rem;">&copy; <?= date('Y') ?> Runit Showcase</div>
     </div>
   </div>
 </aside>

@@ -59,6 +59,17 @@ body[data-bs-theme="light"] {
   color: var(--yt-text);
 }
 
+.yt-brand img {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+}
+
+.yt-brand:hover img {
+  transform: scale(1.05);
+}
+
 .yt-logo-badge {
   background: var(--yt-red);
   color: #fff;

@@ -1,7 +1,7 @@
 <?php
 /**
  * Database Configuration & Global Helpers
- * Showcase Tube & Media CDN Vault
+ * Runit Showcase & Media CDN Vault
  */
 
 // Database credentials for XAMPP

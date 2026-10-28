@@ -176,8 +176,8 @@ include __DIR__ . '/includes/header.php';
                 </a>
 
                 <div class="yt-card-body">
-                  <div class="yt-author-avatar">
-                    <i class="bi bi-play-fill text-danger"></i>
+                  <div class="yt-author-avatar overflow-hidden">
+                    <img src="<?= $baseUrl ?>/public/Runit%20logo%20pack/app-icon-red.png" alt="Runit" style="width: 100%; height: 100%; object-fit: cover;">
                   </div>
                   <div class="yt-card-info">
                     <a href="<?= $watchUrl ?>" class="text-decoration-none">

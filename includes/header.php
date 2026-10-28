@@ -16,11 +16,11 @@ $activePage = basename($_SERVER['PHP_SELF'], '.php');
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><?= isset($pageTitle) ? h($pageTitle) . ' - ' : '' ?>Showcase Media Vault</title>
+  <title><?= isset($pageTitle) ? h($pageTitle) . ' - ' : '' ?>Runit Showcase</title>
   <meta name="description" content="High-performance media vault and streaming platform for videos, images, and documents.">
   
   <!-- Favicon badge -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+  <link rel="icon" type="image/png" href="<?= $baseUrl ?>/public/Runit%20logo%20pack/app-icon-red.png">
 
   <!-- Bootstrap 5.3 CSS & Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
@@ -33,13 +33,13 @@ $activePage = basename($_SERVER['PHP_SELF'], '.php');
 
   <!-- Top Navigation Header -->
   <header class="yt-header">
-    <div class="d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
       <button class="btn btn-link text-dark p-1" id="sidebarToggleBtn" aria-label="Toggle Sidebar" style="font-size: 1.25rem;">
         <i class="bi bi-list"></i>
       </button>
-      <a href="<?= $baseUrl ?>/index.php" class="yt-brand">
-        <span class="yt-logo-badge"><i class="bi bi-play-fill"></i></span>
-        <span>SHOWCASE<span style="color: var(--yt-red);">TUBE</span></span>
+      <a href="<?= $baseUrl ?>/index.php" class="yt-brand d-flex align-items-center gap-2 text-decoration-none">
+        <img src="<?= $baseUrl ?>/public/Runit%20logo%20pack/app-icon-red.png" alt="Runit" height="32" class="rounded">
+        <span class="brand-text text-dark fw-bold" style="letter-spacing: -0.5px; font-size: 1.15rem;">RUNIT <span style="color: #d6111a; font-weight: 800;">SHOWCASE</span></span>
       </a>
     </div>
 

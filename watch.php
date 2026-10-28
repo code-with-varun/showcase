@@ -1,7 +1,7 @@
 <?php
 /**
  * YouTube-style Watch Page (Light Theme)
- * Showcase Tube & Media CDN Vault
+ * Runit Showcase & Media CDN Vault
  * Features:
  * - HTML5 Custom Video Player with Scrubber, Speed, Theater, and Fullscreen
  * - Autoplay Countdown Overlay for Next Video
