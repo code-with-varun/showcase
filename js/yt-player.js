@@ -1,6 +1,11 @@
 /**
  * YouTube-style HTML5 Video Player Controller
- * Showcase Tube & Media CDN
+ * Runit Showcase & Media CDN
+ * Features:
+ * - Play/Pause, Scrubber with Buffer, Volume, Speed, Fullscreen, Theater, PiP
+ * - Forward & Backward 10s Seek buttons and Double-Click zones with Ripple feedback
+ * - Reliable Autoplay with policy fallback (muted retry + unmute banner)
+ * - Countdown End Screen Overlay for Next Video
  */
 
 class YTPlayer {
@@ -11,6 +16,8 @@ class YTPlayer {
     this.video = this.container.querySelector('video');
     this.playBtn = this.container.querySelector('.yt-play-btn');
     this.playIcon = this.playBtn?.querySelector('i');
+    this.seekBackBtn = document.getElementById('seekBackBtn') || this.container.querySelector('.yt-seek-back-btn');
+    this.seekFwdBtn  = document.getElementById('seekFwdBtn')  || this.container.querySelector('.yt-seek-fwd-btn');
     this.progressContainer = this.container.querySelector('.yt-progress-container');
     this.progressBar = this.container.querySelector('.yt-progress-played');
     this.bufferBar = this.container.querySelector('.yt-progress-buffer');
@@ -25,6 +32,7 @@ class YTPlayer {
     this.speedSelect = this.container.querySelector('.yt-speed-select');
 
     this.isDragging = false;
+    this.autoplayTimer = null;
     this.init();
   }
 
@@ -42,6 +50,31 @@ class YTPlayer {
 
     // Controls
     if (this.playBtn) this.playBtn.addEventListener('click', () => this.togglePlay());
+
+    // Seek buttons (+10s, -10s)
+    if (this.seekBackBtn) {
+      this.seekBackBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.seekRelative(-10);
+      });
+    }
+    if (this.seekFwdBtn) {
+      this.seekFwdBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.seekRelative(10);
+      });
+    }
+
+    // Double click to seek: left half = -10s, right half = +10s
+    this.video.addEventListener('dblclick', (e) => {
+      const rect = this.video.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      if (clickX < rect.width / 2) {
+        this.seekRelative(-10);
+      } else {
+        this.seekRelative(10);
+      }
+    });
 
     // Progress bar events
     if (this.progressContainer) {
@@ -106,17 +139,82 @@ class YTPlayer {
         }, { once: true });
       }
     }
-    if (params.get('autoplay') === '1') {
-      this.video.play().catch(() => {
-        this.video.muted = true;
-        this.video.play().catch(() => {});
-      });
+
+    // Handle Reliable Autoplay
+    if (params.get('autoplay') === '1' || this.video.hasAttribute('autoplay')) {
+      const startPlayback = () => {
+        const playPromise = this.video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('Unmuted autoplay prevented by browser; falling back to muted autoplay:', err);
+            this.video.muted = true;
+            this.updateVolumeIcon();
+            this.video.play().then(() => {
+              this.showUnmuteBanner();
+            }).catch(e => console.error('Muted autoplay blocked:', e));
+          });
+        }
+      };
+
+      if (this.video.readyState >= 2) {
+        startPlayback();
+      } else {
+        this.video.addEventListener('loadeddata', startPlayback, { once: true });
+        this.video.addEventListener('canplay', startPlayback, { once: true });
+      }
     }
 
-    this.initAutoplay();
+    this.initAutoplayToggle();
   }
 
-  initAutoplay() {
+  seekRelative(seconds) {
+    if (!this.video) return;
+    const dur = this.video.duration || 0;
+    const target = Math.max(0, Math.min(dur, this.video.currentTime + seconds));
+    this.video.currentTime = target;
+    this.showSeekRipple(seconds);
+  }
+
+  showSeekRipple(seconds) {
+    const isBack = seconds < 0;
+    const id = isBack ? 'seekOverlayLeft' : 'seekOverlayRight';
+    const overlay = document.getElementById(id);
+    if (overlay) {
+      overlay.style.display = 'flex';
+      overlay.style.animation = 'none';
+      void overlay.offsetWidth;
+      overlay.style.animation = 'seekRippleAnim 0.6s ease forwards';
+      setTimeout(() => {
+        overlay.style.display = 'none';
+      }, 600);
+    }
+  }
+
+  showUnmuteBanner() {
+    let banner = document.getElementById('autoplayUnmuteBanner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'autoplayUnmuteBanner';
+      banner.className = 'yt-unmute-badge';
+      banner.innerHTML = '<i class="bi bi-volume-mute-fill me-1"></i> Audio muted for autoplay. Click to unmute.';
+      banner.onclick = () => this.unmuteAndHide();
+      this.container.appendChild(banner);
+    }
+    banner.style.display = 'block';
+  }
+
+  unmuteAndHide() {
+    if (this.video) {
+      this.video.muted = false;
+      this.video.volume = 1;
+      if (this.volumeSlider) this.volumeSlider.value = 1;
+      this.updateVolumeIcon();
+    }
+    const banner = document.getElementById('autoplayUnmuteBanner');
+    if (banner) banner.style.display = 'none';
+  }
+
+  initAutoplayToggle() {
     const autoplayToggle = document.getElementById('autoplayToggle');
     if (autoplayToggle) {
       const saved = localStorage.getItem('yt_autoplay');
@@ -160,6 +258,13 @@ class YTPlayer {
       cancelBtn.onclick = () => {
         if (this.autoplayTimer) clearInterval(this.autoplayTimer);
         if (overlay) overlay.style.display = 'none';
+      };
+    }
+
+    const playNowBtn = document.getElementById('playNowAutoplayBtn');
+    if (playNowBtn) {
+      playNowBtn.onclick = () => {
+        if (this.autoplayTimer) clearInterval(this.autoplayTimer);
       };
     }
   }
@@ -227,15 +332,14 @@ class YTPlayer {
 
   seek(e) {
     const rect = this.progressContainer.getBoundingClientRect();
-    const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const pos = (e.clientX - rect.left) / rect.width;
     this.video.currentTime = pos * this.video.duration;
   }
 
   seekTo(seconds) {
     if (this.video) {
       this.video.currentTime = seconds;
-      this.video.play().catch(() => {});
-      this.container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (this.video.paused) this.video.play();
     }
   }
 
@@ -244,17 +348,13 @@ class YTPlayer {
     const rect = this.progressContainer.getBoundingClientRect();
     const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const hoverTime = pos * this.video.duration;
-
-    this.scrubTooltip.style.display = 'block';
-    this.scrubTooltip.style.left = (pos * 100) + '%';
     this.scrubTooltip.textContent = this.formatTime(hoverTime);
+    this.scrubTooltip.style.left = (pos * 100) + '%';
+    this.scrubTooltip.style.display = 'block';
   }
 
   toggleMute() {
     this.video.muted = !this.video.muted;
-    if (this.volumeSlider) {
-      this.volumeSlider.value = this.video.muted ? 0 : this.video.volume;
-    }
     this.updateVolumeIcon();
   }
 
@@ -271,18 +371,21 @@ class YTPlayer {
 
   toggleFullscreen() {
     if (!document.fullscreenElement) {
-      this.container.requestFullscreen?.().catch(() => {});
+      if (this.container.requestFullscreen) {
+        this.container.requestFullscreen();
+      }
+      this.container.classList.add('fullscreen');
     } else {
-      document.exitFullscreen?.().catch(() => {});
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+      this.container.classList.remove('fullscreen');
     }
   }
 
   toggleTheater() {
-    const layout = document.querySelector('.watch-layout');
-    if (layout) {
-      layout.classList.toggle('theater-active');
-      window.dispatchEvent(new Event('resize'));
-    }
+    this.container.classList.toggle('theater-mode');
+    document.body.classList.toggle('yt-theater-active');
   }
 
   async togglePiP() {
@@ -322,19 +425,19 @@ class YTPlayer {
         break;
       case 'j':
         e.preventDefault();
-        this.video.currentTime = Math.max(0, this.video.currentTime - 10);
+        this.seekRelative(-10);
         break;
       case 'l':
         e.preventDefault();
-        this.video.currentTime = Math.min(this.video.duration, this.video.currentTime + 10);
+        this.seekRelative(10);
         break;
       case 'arrowleft':
         e.preventDefault();
-        this.video.currentTime = Math.max(0, this.video.currentTime - 5);
+        this.seekRelative(-5);
         break;
       case 'arrowright':
         e.preventDefault();
-        this.video.currentTime = Math.min(this.video.duration, this.video.currentTime + 5);
+        this.seekRelative(5);
         break;
       case 'arrowup':
         e.preventDefault();

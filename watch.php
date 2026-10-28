@@ -115,8 +115,22 @@ function formatDescriptionTimestamps(string $desc): string {
         <!-- YouTube Custom Player -->
         <div class="yt-player-container" id="ytPlayerContainer">
           <?php if ($isVideo): ?>
-            <video id="mainVideo" src="<?= $streamUrl ?>" poster="<?= $asset['thumbnail_path'] ? $baseUrl . '/' . ltrim($asset['thumbnail_path'], '/') : '' ?>" playsinline preload="metadata"></video>
+            <video id="mainVideo" src="<?= $streamUrl ?>" poster="<?= $asset['thumbnail_path'] ? $baseUrl . '/' . ltrim($asset['thumbnail_path'], '/') : '' ?>" playsinline preload="auto" <?= (!empty($_GET['autoplay']) && $_GET['autoplay'] == '1') ? 'autoplay' : '' ?>></video>
             
+            <!-- Seek Ripple Overlays (for double-click and button clicks) -->
+            <div class="yt-seek-overlay yt-seek-overlay-left" id="seekOverlayLeft" style="display: none;">
+              <div class="yt-seek-ripple">
+                <i class="bi bi-arrow-counterclockwise fs-2"></i>
+                <span class="fw-bold small mt-1">10 seconds</span>
+              </div>
+            </div>
+            <div class="yt-seek-overlay yt-seek-overlay-right" id="seekOverlayRight" style="display: none;">
+              <div class="yt-seek-ripple">
+                <i class="bi bi-arrow-clockwise fs-2"></i>
+                <span class="fw-bold small mt-1">10 seconds</span>
+              </div>
+            </div>
+
             <!-- Autoplay Countdown Overlay (End Screen) -->
             <?php if ($nextVideo): ?>
               <div class="yt-autoplay-overlay" id="autoplayOverlay" style="display: none;">
@@ -157,6 +171,19 @@ function formatDescriptionTimestamps(string $desc): string {
                   <button class="yt-ctrl-btn yt-play-btn" title="Play/Pause (Space/K)">
                     <i class="bi bi-play-fill"></i>
                   </button>
+
+                  <!-- Rewind 10s -->
+                  <button class="yt-ctrl-btn yt-seek-btn yt-seek-back-btn" id="seekBackBtn" title="Rewind 10 seconds (J or Left Arrow)">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    <span class="yt-seek-text">10</span>
+                  </button>
+
+                  <!-- Fast Forward 10s -->
+                  <button class="yt-ctrl-btn yt-seek-btn yt-seek-fwd-btn" id="seekFwdBtn" title="Forward 10 seconds (L or Right Arrow)">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    <span class="yt-seek-text">10</span>
+                  </button>
+
                   <div class="yt-volume-wrapper">
                     <button class="yt-ctrl-btn yt-volume-btn" title="Mute (M)">
                       <i class="bi bi-volume-up-fill"></i>

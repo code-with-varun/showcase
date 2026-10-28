@@ -957,4 +957,83 @@ body.sidebar-collapsed .yt-main-content {
   margin-top: 0.15rem;
 }
 
+/* Seek buttons & overlays */
+.yt-seek-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-size: 1.15rem;
+}
+
+.yt-seek-text {
+  font-size: 0.65rem;
+  font-weight: 800;
+  margin-left: 1px;
+}
+
+.yt-seek-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 45;
+  color: #fff;
+  animation: seekRippleAnim 0.6s ease forwards;
+}
+
+.yt-seek-overlay-left {
+  left: 0;
+  background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.25) 0%, transparent 70%);
+}
+
+.yt-seek-overlay-right {
+  right: 0;
+  background: radial-gradient(circle at 80% 50%, rgba(255, 255, 255, 0.25) 0%, transparent 70%);
+}
+
+.yt-seek-ripple {
+  background: rgba(0, 0, 0, 0.6);
+  padding: 0.75rem 1.25rem;
+  border-radius: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  backdrop-filter: blur(4px);
+}
+
+@keyframes seekRippleAnim {
+  0% { opacity: 0; transform: scale(0.85); }
+  30% { opacity: 1; transform: scale(1.05); }
+  70% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.15); }
+}
+
+/* Autoplay Unmute Badge */
+.yt-unmute-badge {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  z-index: 40;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.yt-unmute-badge:hover {
+  background: #d6111a;
+  transform: scale(1.03);
+}
+
 

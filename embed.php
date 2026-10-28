@@ -106,6 +106,14 @@ $mute      = (isset($_GET['mute']) && $_GET['mute'] == '1');
               <button class="yt-ctrl-btn yt-play-btn" title="Play/Pause">
                 <i class="bi bi-play-fill"></i>
               </button>
+              <button class="yt-ctrl-btn yt-seek-btn yt-seek-back-btn" id="seekBackBtn" title="Rewind 10s">
+                <i class="bi bi-arrow-counterclockwise"></i>
+                <span class="yt-seek-text">10</span>
+              </button>
+              <button class="yt-ctrl-btn yt-seek-btn yt-seek-fwd-btn" id="seekFwdBtn" title="Forward 10s">
+                <i class="bi bi-arrow-clockwise"></i>
+                <span class="yt-seek-text">10</span>
+              </button>
               <div class="yt-volume-wrapper">
                 <button class="yt-ctrl-btn yt-volume-btn" title="Mute">
                   <i class="bi bi-volume-up-fill"></i>

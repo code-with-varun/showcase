@@ -288,11 +288,14 @@ include __DIR__ . '/includes/header.php';
                 </div>
 
                 <div class="d-flex align-items-center gap-2">
+                  <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="startProjectSlideshow('<?= addslashes(h($pName)) ?>')">
+                    <i class="bi bi-play-circle-fill me-1"></i> Slideshow
+                  </button>
                   <button type="button" class="btn btn-outline-secondary btn-sm copy-btn" data-copy="<?= $pLink ?>" title="Copy direct link to this project">
-                    <i class="bi bi-link-45deg me-1"></i> Copy Project Link
+                    <i class="bi bi-link-45deg me-1"></i> Copy Link
                   </button>
                   <button type="button" class="btn btn-outline-dark btn-sm" onclick="filterProjectDisplay('<?= addslashes(h($pName)) ?>')">
-                    <i class="bi bi-funnel me-1"></i> Focus Project
+                    <i class="bi bi-funnel me-1"></i> Focus
                   </button>
                 </div>
               </div>
@@ -459,11 +462,22 @@ include __DIR__ . '/includes/header.php';
           <h6 class="modal-title text-dark mb-0 text-truncate" id="lightboxTitle">Image Preview</h6>
           <span class="badge bg-secondary-subtle text-dark border small" id="lightboxCounter">1 / 1</span>
         </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" class="btn btn-outline-dark btn-sm rounded-pill d-flex align-items-center gap-1 px-3" id="lightboxSlideshowBtn" onclick="toggleLightboxSlideshow()" title="Play / Pause Slideshow (Space or P)">
+            <i class="bi bi-play-fill text-danger fs-6" id="slideshowIcon"></i>
+            <span id="slideshowLabel">Slideshow</span>
+          </button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
       </div>
 
-      <div class="modal-body p-0 text-center bg-light d-flex align-items-center justify-content-center" style="min-height: 65vh; position: relative;">
-        <img id="lightboxImg" src="" alt="Preview" style="max-width: 100%; max-height: 80vh; object-fit: contain;">
+      <div class="modal-body p-0 text-center bg-light d-flex align-items-center justify-content-center position-relative" style="min-height: 65vh;">
+        <!-- Slideshow Progress Line Indicator -->
+        <div class="slideshow-progress" id="slideshowProgress" style="display: none; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: rgba(0,0,0,0.08); z-index: 25;">
+          <div id="slideshowProgressBar" style="height: 100%; width: 0%; background: #e50914; transition: width 3.5s linear;"></div>
+        </div>
+
+        <img id="lightboxImg" src="" alt="Preview" style="max-width: 100%; max-height: 80vh; object-fit: contain; transition: opacity 0.2s ease;">
       </div>
 
       <div class="modal-footer border-top border-light-subtle d-flex justify-content-between align-items-center">
@@ -502,6 +516,9 @@ const appBaseUrl = <?= json_encode($baseUrl) ?>;
 let activeGalleryName = null;
 let activeGalleryIndex = 0;
 let lightboxModalInstance = null;
+let slideshowTimer = null;
+let isSlideshowActive = false;
+const SLIDESHOW_DURATION = 3500; // 3.5 seconds
 
 function openProjectLightbox(pName, index) {
   if (!projectGalleries[pName] || !projectGalleries[pName][index]) return;
@@ -511,6 +528,11 @@ function openProjectLightbox(pName, index) {
 
   if (!lightboxModalInstance) {
     lightboxModalInstance = new bootstrap.Modal(document.getElementById('imageLightboxModal'));
+    
+    // Automatically cancel slideshow when lightbox is closed
+    document.getElementById('imageLightboxModal').addEventListener('hidden.bs.modal', () => {
+      stopLightboxSlideshow();
+    });
   }
   lightboxModalInstance.show();
 }
@@ -523,6 +545,11 @@ function navProjectLightbox(direction) {
   else if (nextIdx >= list.length) nextIdx = 0;
   activeGalleryIndex = nextIdx;
   renderLightboxCurrent();
+
+  // If slideshow is running and user clicked nav, reset the step timer
+  if (isSlideshowActive) {
+    runSlideshowStep();
+  }
 }
 
 function renderLightboxCurrent() {
@@ -533,10 +560,85 @@ function renderLightboxCurrent() {
   document.getElementById('lightboxProjectBadge').textContent = activeGalleryName;
   document.getElementById('lightboxTitle').textContent = item.title;
   document.getElementById('lightboxCounter').textContent = (activeGalleryIndex + 1) + ' / ' + list.length;
-  document.getElementById('lightboxImg').src = fullUrl;
+  
+  const imgEl = document.getElementById('lightboxImg');
+  imgEl.style.opacity = '0.6';
+  imgEl.src = fullUrl;
+  imgEl.onload = () => { imgEl.style.opacity = '1'; };
+
   document.getElementById('lightboxSize').textContent = (item.extension || '').toUpperCase() + ' • ' + formatBytesJS(item.file_size);
   document.getElementById('lightboxCopyBtn').setAttribute('data-copy', fullUrl);
   document.getElementById('lightboxDownloadBtn').href = fullUrl;
+}
+
+// Slideshow Controls
+function toggleLightboxSlideshow() {
+  if (isSlideshowActive) {
+    stopLightboxSlideshow();
+    if (typeof showToast === 'function') showToast('Slideshow paused');
+  } else {
+    startLightboxSlideshow();
+    if (typeof showToast === 'function') showToast('Slideshow started (3.5s per image)');
+  }
+}
+
+function startLightboxSlideshow() {
+  isSlideshowActive = true;
+  const icon = document.getElementById('slideshowIcon');
+  const label = document.getElementById('slideshowLabel');
+  const btn = document.getElementById('lightboxSlideshowBtn');
+  const progress = document.getElementById('slideshowProgress');
+
+  if (icon) icon.className = 'bi bi-pause-fill text-warning fs-6';
+  if (label) label.textContent = 'Pause';
+  if (btn) btn.classList.replace('btn-outline-dark', 'btn-dark');
+  if (progress) progress.style.display = 'block';
+
+  runSlideshowStep();
+}
+
+function runSlideshowStep() {
+  if (!isSlideshowActive) return;
+  const progressBar = document.getElementById('slideshowProgressBar');
+  if (progressBar) {
+    progressBar.style.transition = 'none';
+    progressBar.style.width = '0%';
+    void progressBar.offsetWidth;
+    progressBar.style.transition = `width ${SLIDESHOW_DURATION}ms linear`;
+    progressBar.style.width = '100%';
+  }
+
+  if (slideshowTimer) clearTimeout(slideshowTimer);
+  slideshowTimer = setTimeout(() => {
+    if (!isSlideshowActive) return;
+    navProjectLightbox(1);
+  }, SLIDESHOW_DURATION);
+}
+
+function stopLightboxSlideshow() {
+  isSlideshowActive = false;
+  if (slideshowTimer) clearTimeout(slideshowTimer);
+  const icon = document.getElementById('slideshowIcon');
+  const label = document.getElementById('slideshowLabel');
+  const btn = document.getElementById('lightboxSlideshowBtn');
+  const progress = document.getElementById('slideshowProgress');
+  const progressBar = document.getElementById('slideshowProgressBar');
+
+  if (icon) icon.className = 'bi bi-play-fill text-danger fs-6';
+  if (label) label.textContent = 'Slideshow';
+  if (btn) btn.classList.replace('btn-dark', 'btn-outline-dark');
+  if (progress) progress.style.display = 'none';
+  if (progressBar) {
+    progressBar.style.transition = 'none';
+    progressBar.style.width = '0%';
+  }
+}
+
+function startProjectSlideshow(pName) {
+  openProjectLightbox(pName, 0);
+  setTimeout(() => {
+    startLightboxSlideshow();
+  }, 350);
 }
 
 function formatBytesJS(bytes) {
@@ -547,12 +649,16 @@ function formatBytesJS(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-// Keyboard navigation in lightbox (ArrowLeft, ArrowRight)
+// Keyboard navigation in lightbox (ArrowLeft, ArrowRight, Space/P for Slideshow)
 document.addEventListener('keydown', (e) => {
   const modalEl = document.getElementById('imageLightboxModal');
   if (modalEl && modalEl.classList.contains('show')) {
     if (e.key === 'ArrowLeft') navProjectLightbox(-1);
     else if (e.key === 'ArrowRight') navProjectLightbox(1);
+    else if (e.key === ' ' || e.key.toLowerCase() === 'p') {
+      e.preventDefault();
+      toggleLightboxSlideshow();
+    }
   }
 });
 
