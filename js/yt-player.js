@@ -31,6 +31,8 @@ class YTPlayer {
     this.pipBtn = this.container.querySelector('.yt-pip-btn');
     this.speedSelect = this.container.querySelector('.yt-speed-select');
 
+    this.assetId = new URLSearchParams(window.location.search).get('v') || this.container.getAttribute('data-asset-id') || '';
+    this.lastProgressSave = 0;
     this.isDragging = false;
     this.autoplayTimer = null;
     this.init();
@@ -129,14 +131,38 @@ class YTPlayer {
       });
     });
 
-    // Check URL parameters like ?t=30s or ?autoplay=1
+    // Check URL parameters like ?t=30s, ?t=1m25s, or ?autoplay=1
     const params = new URLSearchParams(window.location.search);
+    let hasUrlTimestamp = false;
     if (params.has('t')) {
-      const t = parseInt(params.get('t'), 10);
-      if (!isNaN(t)) {
-        this.video.addEventListener('loadedmetadata', () => {
-          this.video.currentTime = t;
-        }, { once: true });
+      const parsedTime = this.parseTimestamp(params.get('t'));
+      if (parsedTime !== null && parsedTime >= 0) {
+        hasUrlTimestamp = true;
+        const applySeek = () => {
+          this.video.currentTime = parsedTime;
+        };
+        if (this.video.readyState >= 1) {
+          applySeek();
+        } else {
+          this.video.addEventListener('loadedmetadata', applySeek, { once: true });
+        }
+      }
+    }
+
+    // Check saved resume position if not specified via ?t=
+    if (!hasUrlTimestamp && this.assetId) {
+      const applyResume = () => {
+        const saved = parseInt(localStorage.getItem('runit_resume_' + this.assetId), 10);
+        const dur = this.video.duration || 0;
+        if (!isNaN(saved) && saved >= 5 && (dur === 0 || saved < dur - 8)) {
+          this.video.currentTime = saved;
+          this.showResumeToast(saved);
+        }
+      };
+      if (this.video.readyState >= 1) {
+        applyResume();
+      } else {
+        this.video.addEventListener('loadedmetadata', applyResume, { once: true });
       }
     }
 
@@ -228,6 +254,17 @@ class YTPlayer {
   }
 
   onVideoEnded() {
+    // Clear resume point on finish & mark 100% complete
+    if (this.assetId) {
+      localStorage.removeItem('runit_resume_' + this.assetId);
+      try {
+        let progressMap = JSON.parse(localStorage.getItem('runit_progress_map') || '{}');
+        const dur = Math.floor(this.video.duration || 0);
+        progressMap[this.assetId] = { time: dur, duration: dur, pct: 100, completed: true, updatedAt: Date.now() };
+        localStorage.setItem('runit_progress_map', JSON.stringify(progressMap));
+      } catch (e) {}
+    }
+
     const autoplayToggle = document.getElementById('autoplayToggle');
     const isAutoplay = autoplayToggle ? autoplayToggle.checked : (localStorage.getItem('yt_autoplay') !== 'false');
     const nextVideoUrl = window.nextVideoUrl;
@@ -282,6 +319,7 @@ class YTPlayer {
     if (this.playIcon) {
       this.playIcon.className = 'bi bi-pause-fill';
     }
+    this.logWatchHistory();
   }
 
   onPause() {
@@ -296,6 +334,108 @@ class YTPlayer {
     const pct = (this.video.currentTime / this.video.duration) * 100;
     if (this.progressBar) this.progressBar.style.width = pct + '%';
     this.updateTimeText();
+    this.saveProgress();
+  }
+
+  parseTimestamp(param) {
+    if (!param) return null;
+    param = String(param).trim().toLowerCase();
+    let total = 0;
+    const hMatch = param.match(/(\d+)h/);
+    const mMatch = param.match(/(\d+)m/);
+    const sMatch = param.match(/(\d+)s/);
+    if (hMatch || mMatch || sMatch) {
+      if (hMatch) total += parseInt(hMatch[1], 10) * 3600;
+      if (mMatch) total += parseInt(mMatch[1], 10) * 60;
+      if (sMatch) total += parseInt(sMatch[1], 10);
+      return total;
+    }
+    const raw = parseInt(param, 10);
+    return !isNaN(raw) ? raw : null;
+  }
+
+  showResumeToast(seconds) {
+    let toast = document.getElementById('ytResumeToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'ytResumeToast';
+      toast.className = 'yt-resume-toast';
+      this.container.appendChild(toast);
+    }
+    toast.innerHTML = `
+      <i class="bi bi-clock-history text-danger"></i>
+      <span>Resumed from <strong>${this.formatTime(seconds)}</strong></span>
+      <button type="button" class="btn btn-link text-white text-decoration-underline p-0 ms-2" id="startOverResumeBtn">Start over</button>
+      <button type="button" class="btn-close btn-close-white btn-sm ms-2" style="font-size: 0.65rem;" id="dismissResumeToastBtn" aria-label="Close"></button>
+    `;
+    toast.style.display = 'flex';
+
+    const startOverBtn = document.getElementById('startOverResumeBtn');
+    if (startOverBtn) {
+      startOverBtn.onclick = (e) => {
+        e.stopPropagation();
+        this.video.currentTime = 0;
+        if (this.assetId) localStorage.removeItem('runit_resume_' + this.assetId);
+        toast.style.display = 'none';
+        if (typeof showToast === 'function') showToast('Restarted from beginning');
+      };
+    }
+
+    const dismissBtn = document.getElementById('dismissResumeToastBtn');
+    if (dismissBtn) {
+      dismissBtn.onclick = (e) => {
+        e.stopPropagation();
+        toast.style.display = 'none';
+      };
+    }
+
+    setTimeout(() => {
+      if (toast) toast.style.display = 'none';
+    }, 7000);
+  }
+
+  logWatchHistory() {
+    if (!this.assetId) return;
+    try {
+      let history = JSON.parse(localStorage.getItem('runit_history') || '[]');
+      if (!Array.isArray(history)) history = [];
+      history = history.filter(item => item && item.id !== this.assetId);
+      history.unshift({
+        id: this.assetId,
+        title: (document.title || '').replace(' - Runit Showcase', '').trim(),
+        url: window.location.href.split('&t=')[0],
+        timestamp: Date.now()
+      });
+      if (history.length > 50) history = history.slice(0, 50);
+      localStorage.setItem('runit_history', JSON.stringify(history));
+    } catch (e) {
+      console.warn('Watch history error:', e);
+    }
+  }
+
+  saveProgress() {
+    if (!this.assetId || !this.video || !this.video.duration) return;
+    const now = Date.now();
+    if (now - this.lastProgressSave < 2000) return; // throttle 2s
+    this.lastProgressSave = now;
+
+    const curr = Math.floor(this.video.currentTime);
+    const dur = Math.floor(this.video.duration);
+    const pct = Math.min(100, Math.round((curr / dur) * 100));
+
+    try {
+      let progressMap = JSON.parse(localStorage.getItem('runit_progress_map') || '{}');
+      if (typeof progressMap !== 'object' || progressMap === null) progressMap = {};
+
+      if (curr >= dur - 5) {
+        localStorage.removeItem('runit_resume_' + this.assetId);
+        progressMap[this.assetId] = { time: dur, duration: dur, pct: 100, completed: true, updatedAt: now };
+      } else if (curr >= 5) {
+        localStorage.setItem('runit_resume_' + this.assetId, curr);
+        progressMap[this.assetId] = { time: curr, duration: dur, pct: pct, completed: false, updatedAt: now };
+      }
+      localStorage.setItem('runit_progress_map', JSON.stringify(progressMap));
+    } catch (e) {}
   }
 
   onBufferProgress() {

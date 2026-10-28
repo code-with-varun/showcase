@@ -137,6 +137,40 @@ include __DIR__ . '/includes/header.php';
         </h4>
       </div>
 
+      <!-- Video Sub-Filter Navigation Bar (Zero-Login Watch History & Watch Later) -->
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap" id="videoSubFilterGroup">
+          <button type="button" class="btn btn-sm btn-dark rounded-pill px-3 py-1 video-subfilter-btn active" data-subfilter="all">
+            All Videos
+          </button>
+          <button type="button" class="btn btn-sm btn-light border rounded-pill px-3 py-1 video-subfilter-btn text-secondary" data-subfilter="history">
+            <i class="bi bi-clock-history text-danger me-1"></i> Watch History <span class="badge bg-secondary-subtle text-dark border ms-1" id="historyFilterCount">0</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-light border rounded-pill px-3 py-1 video-subfilter-btn text-secondary" data-subfilter="later">
+            <i class="bi bi-clock text-primary me-1"></i> Watch Later <span class="badge bg-secondary-subtle text-dark border ms-1" id="watchLaterFilterCount">0</span>
+          </button>
+        </div>
+
+        <!-- Quick Clear Button when on History or Watch Later tab -->
+        <button type="button" class="btn btn-sm btn-link text-secondary text-decoration-none d-none" id="clearSubFilterListBtn">
+          <i class="bi bi-trash3 me-1"></i> <span id="clearSubFilterListText">Clear List</span>
+        </button>
+      </div>
+
+      <!-- Empty state container for Watch History subfilter -->
+      <div class="p-4 rounded-3 border border-light-subtle bg-white text-center text-secondary shadow-sm d-none mb-4" id="historyEmptyState">
+        <i class="bi bi-clock-history display-6 d-block mb-2 text-danger"></i>
+        <h6 class="fw-bold text-dark">No Watch History Yet</h6>
+        <div class="small">Videos you play on this browser will automatically appear here so you can pick up where you left off.</div>
+      </div>
+
+      <!-- Empty state container for Watch Later subfilter -->
+      <div class="p-4 rounded-3 border border-light-subtle bg-white text-center text-secondary shadow-sm d-none mb-4" id="watchLaterEmptyState">
+        <i class="bi bi-clock display-6 d-block mb-2 text-primary"></i>
+        <h6 class="fw-bold text-dark">Your Watch Later List is Empty</h6>
+        <div class="small">Click the clock icon on any video thumbnail to bookmark it for later watching without creating an account.</div>
+      </div>
+
       <?php if (empty($assetsList)): ?>
         <div class="p-4 rounded-3 border border-light-subtle bg-white text-center text-secondary shadow-sm">
           <i class="bi bi-camera-video display-6 d-block mb-2 text-muted"></i>
@@ -144,7 +178,7 @@ include __DIR__ . '/includes/header.php';
           <div class="small mt-1">Upload via <a href="<?= $baseUrl ?>/studio.php" class="text-danger">Studio</a> or drop MP4/WebM files into <code>assets/videos/</code> and click Sync.</div>
         </div>
       <?php else: ?>
-        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 g-xl-4">
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 g-xl-4" id="videosGridContainer">
           <?php foreach ($assetsList as $vid): 
             $watchUrl  = "{$baseUrl}/watch.php?v={$vid['id']}";
             $streamUrl = "{$baseUrl}/stream.php?v={$vid['id']}";
@@ -163,17 +197,29 @@ include __DIR__ . '/includes/header.php';
               'markdownTag' => "![" . h($vid['title']) . "]({$streamUrl})"
             ]);
           ?>
-            <div class="col">
+            <div class="col video-card-col" data-video-id="<?= $vid['id'] ?>">
               <div class="yt-card">
-                <a href="<?= $watchUrl ?>" class="yt-thumb-wrapper">
-                  <img src="<?= $thumbUrl ?>" alt="<?= h($vid['title']) ?>" loading="lazy">
-                  <!-- Hover silent video preview -->
-                  <video class="hover-preview" src="<?= $streamUrl ?>" muted preload="none"></video>
-                  <span class="yt-duration-badge">
-                    <?= $vid['duration_seconds'] > 0 ? formatDuration((int)$vid['duration_seconds']) : formatBytes((float)$vid['file_size']) ?>
-                  </span>
-                  <span class="yt-type-badge bg-danger">VIDEO</span>
-                </a>
+                <div class="yt-thumb-wrapper position-relative">
+                  <a href="<?= $watchUrl ?>" class="d-block w-100 h-100 text-decoration-none">
+                    <img src="<?= $thumbUrl ?>" alt="<?= h($vid['title']) ?>" loading="lazy">
+                    <!-- Hover silent video preview -->
+                    <video class="hover-preview" src="<?= $streamUrl ?>" muted preload="none"></video>
+                    <span class="yt-duration-badge">
+                      <?= $vid['duration_seconds'] > 0 ? formatDuration((int)$vid['duration_seconds']) : formatBytes((float)$vid['file_size']) ?>
+                    </span>
+                    <span class="yt-type-badge bg-danger">VIDEO</span>
+                  </a>
+
+                  <!-- 1-Click Quick Watch Later Bookmark -->
+                  <button type="button" class="yt-quick-watch-later" data-id="<?= $vid['id'] ?>" title="Save to Watch Later">
+                    <i class="bi bi-clock"></i>
+                  </button>
+
+                  <!-- YouTube Red Resume Progress Bar -->
+                  <div class="yt-thumb-progress" id="progress-bar-<?= $vid['id'] ?>">
+                    <div class="yt-thumb-progress-fill" id="progress-fill-<?= $vid['id'] ?>"></div>
+                  </div>
+                </div>
 
                 <div class="yt-card-body">
                   <div class="yt-author-avatar overflow-hidden">
@@ -194,6 +240,7 @@ include __DIR__ . '/includes/header.php';
                           </button>
                           <ul class="dropdown-menu dropdown-menu-end shadow-sm border-light-subtle">
                             <li><a class="dropdown-item" href="<?= $watchUrl ?>"><i class="bi bi-play-btn me-2"></i>Watch Video</a></li>
+                            <li><a class="dropdown-item toggle-watch-later-menu-item" href="#" data-id="<?= $vid['id'] ?>"><i class="bi bi-clock me-2"></i><span class="wl-label">Save to Watch Later</span></a></li>
                             <li><a class="dropdown-item" href="#" data-share-asset='<?= htmlspecialchars($shareData, ENT_QUOTES) ?>'><i class="bi bi-share me-2"></i>Share & Embed</a></li>
                             <li><a class="dropdown-item" href="<?= $streamUrl ?>" download><i class="bi bi-download me-2"></i>Download MP4</a></li>
                             <?php if (isAdminLoggedIn()): ?>
@@ -714,6 +761,233 @@ document.querySelectorAll('.preview-pdf-btn').forEach(btn => {
     const modal = new bootstrap.Modal(document.getElementById('pdfPreviewModal'));
     modal.show();
   });
+});
+
+// =========================================================================
+// VIDEO RESUME PROGRESS & WATCH LATER CONTROLLER (CLIENT-SIDE / ZERO-LOGIN)
+// =========================================================================
+
+function getWatchLaterList() {
+  try {
+    const list = JSON.parse(localStorage.getItem('runit_watch_later') || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function getWatchHistoryList() {
+  try {
+    const list = JSON.parse(localStorage.getItem('runit_history') || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function getProgressMap() {
+  try {
+    const map = JSON.parse(localStorage.getItem('runit_progress_map') || '{}');
+    return (typeof map === 'object' && map !== null) ? map : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function syncVideoUI() {
+  const wlList = getWatchLaterList();
+  const histList = getWatchHistoryList();
+  const progMap = getProgressMap();
+
+  // 1. Update Subfilter count badges
+  const wlBadge = document.getElementById('watchLaterFilterCount');
+  if (wlBadge) wlBadge.textContent = wlList.length;
+
+  const histBadge = document.getElementById('historyFilterCount');
+  if (histBadge) histBadge.textContent = histList.length;
+
+  // 2. Render progress bars on video cards
+  document.querySelectorAll('.video-card-col').forEach(card => {
+    const vidId = card.getAttribute('data-video-id');
+    const pBar = document.getElementById('progress-bar-' + vidId);
+    const pFill = document.getElementById('progress-fill-' + vidId);
+    if (pBar && pFill) {
+      const prog = progMap[vidId];
+      if (prog && prog.pct > 0) {
+        pBar.style.display = 'block';
+        pFill.style.width = Math.min(100, Math.max(2, prog.pct)) + '%';
+      } else {
+        pBar.style.display = 'none';
+        pFill.style.width = '0%';
+      }
+    }
+
+    // 3. Update Watch Later quick buttons and dropdown items
+    const isSaved = wlList.includes(vidId);
+    const quickBtn = card.querySelector('.yt-quick-watch-later');
+    if (quickBtn) {
+      if (isSaved) {
+        quickBtn.classList.add('active');
+        quickBtn.innerHTML = '<i class="bi bi-check2"></i>';
+        quickBtn.title = 'Saved in Watch Later (Click to remove)';
+      } else {
+        quickBtn.classList.remove('active');
+        quickBtn.innerHTML = '<i class="bi bi-clock"></i>';
+        quickBtn.title = 'Save to Watch Later';
+      }
+    }
+
+    const menuLabel = card.querySelector('.toggle-watch-later-menu-item .wl-label');
+    if (menuLabel) {
+      menuLabel.textContent = isSaved ? 'Remove from Watch Later' : 'Save to Watch Later';
+    }
+  });
+}
+
+// Subfilter Switching (All, History, Watch Later)
+let currentSubfilter = 'all';
+
+function applySubfilter(filter) {
+  currentSubfilter = filter;
+
+  // Update button active state
+  document.querySelectorAll('.video-subfilter-btn').forEach(btn => {
+    if (btn.getAttribute('data-subfilter') === filter) {
+      btn.classList.add('active', 'btn-dark');
+      btn.classList.remove('btn-light', 'text-secondary');
+    } else {
+      btn.classList.remove('active', 'btn-dark');
+      btn.classList.add('btn-light', 'text-secondary');
+    }
+  });
+
+  const cards = document.querySelectorAll('.video-card-col');
+  const histEmpty = document.getElementById('historyEmptyState');
+  const wlEmpty = document.getElementById('watchLaterEmptyState');
+  const clearBtn = document.getElementById('clearSubFilterListBtn');
+  const clearText = document.getElementById('clearSubFilterListText');
+
+  if (filter === 'all') {
+    cards.forEach(c => c.style.display = 'block');
+    if (histEmpty) histEmpty.classList.add('d-none');
+    if (wlEmpty) wlEmpty.classList.add('d-none');
+    if (clearBtn) clearBtn.classList.add('d-none');
+  } else if (filter === 'history') {
+    const histIds = getWatchHistoryList().map(item => item.id);
+    let matchedCount = 0;
+    cards.forEach(c => {
+      const vidId = c.getAttribute('data-video-id');
+      if (histIds.includes(vidId)) {
+        c.style.display = 'block';
+        matchedCount++;
+      } else {
+        c.style.display = 'none';
+      }
+    });
+
+    if (matchedCount === 0) {
+      if (histEmpty) histEmpty.classList.remove('d-none');
+    } else {
+      if (histEmpty) histEmpty.classList.add('d-none');
+    }
+    if (wlEmpty) wlEmpty.classList.add('d-none');
+
+    if (clearBtn) {
+      clearBtn.classList.remove('d-none');
+      if (clearText) clearText.textContent = 'Clear History';
+    }
+  } else if (filter === 'later') {
+    const wlList = getWatchLaterList();
+    let matchedCount = 0;
+    cards.forEach(c => {
+      const vidId = c.getAttribute('data-video-id');
+      if (wlList.includes(vidId)) {
+        c.style.display = 'block';
+        matchedCount++;
+      } else {
+        c.style.display = 'none';
+      }
+    });
+
+    if (matchedCount === 0) {
+      if (wlEmpty) wlEmpty.classList.remove('d-none');
+    } else {
+      if (wlEmpty) wlEmpty.classList.add('d-none');
+    }
+    if (histEmpty) histEmpty.classList.add('d-none');
+
+    if (clearBtn) {
+      clearBtn.classList.remove('d-none');
+      if (clearText) clearText.textContent = 'Clear Watch Later';
+    }
+  }
+}
+
+// Toggle Watch Later from cards
+function toggleWatchLaterItem(vidId) {
+  let list = getWatchLaterList();
+  if (list.includes(vidId)) {
+    list = list.filter(id => id !== vidId);
+    localStorage.setItem('runit_watch_later', JSON.stringify(list));
+    syncVideoUI();
+    if (typeof showToast === 'function') showToast('Removed from Watch Later');
+  } else {
+    list.push(vidId);
+    localStorage.setItem('runit_watch_later', JSON.stringify(list));
+    syncVideoUI();
+    if (typeof showToast === 'function') showToast('Saved to Watch Later!');
+  }
+
+  if (currentSubfilter === 'later') {
+    applySubfilter('later');
+  }
+}
+
+// Bind subfilter buttons and click listeners
+document.querySelectorAll('.video-subfilter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    applySubfilter(btn.getAttribute('data-subfilter'));
+  });
+});
+
+document.addEventListener('click', (e) => {
+  const quickBtn = e.target.closest('.yt-quick-watch-later');
+  if (quickBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const vidId = quickBtn.getAttribute('data-id');
+    toggleWatchLaterItem(vidId);
+    return;
+  }
+
+  const menuItem = e.target.closest('.toggle-watch-later-menu-item');
+  if (menuItem) {
+    e.preventDefault();
+    const vidId = menuItem.getAttribute('data-id');
+    toggleWatchLaterItem(vidId);
+    return;
+  }
+
+  const clearBtn = e.target.closest('#clearSubFilterListBtn');
+  if (clearBtn) {
+    e.preventDefault();
+    if (currentSubfilter === 'history') {
+      localStorage.removeItem('runit_history');
+      syncVideoUI();
+      applySubfilter('history');
+      if (typeof showToast === 'function') showToast('Watch history cleared');
+    } else if (currentSubfilter === 'later') {
+      localStorage.removeItem('runit_watch_later');
+      syncVideoUI();
+      applySubfilter('later');
+      if (typeof showToast === 'function') showToast('Watch Later cleared');
+    }
+  }
+});
+
+// Run sync on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  syncVideoUI();
 });
 </script>
 

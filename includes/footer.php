@@ -54,6 +54,7 @@
   </div>
 
   <!-- Universal Share & Embed Modal for Specific Assets -->
+  <?php if (empty($hideFooterShareModal)): ?>
   <div class="modal fade" id="shareAssetModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content bg-white text-dark border-light-subtle shadow">
@@ -100,6 +101,7 @@
       </div>
     </div>
   </div>
+  <?php endif; ?>
 
   <!-- Toast Notification Container -->
   <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">

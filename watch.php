@@ -113,7 +113,7 @@ function formatDescriptionTimestamps(string $desc): string {
       <div class="col-lg-8 col-xl-9">
         
         <!-- YouTube Custom Player -->
-        <div class="yt-player-container" id="ytPlayerContainer">
+        <div class="yt-player-container" id="ytPlayerContainer" data-asset-id="<?= $asset['id'] ?>">
           <?php if ($isVideo): ?>
             <video id="mainVideo" src="<?= $streamUrl ?>" poster="<?= $asset['thumbnail_path'] ? $baseUrl . '/' . ltrim($asset['thumbnail_path'], '/') : '' ?>" playsinline preload="auto" <?= (!empty($_GET['autoplay']) && $_GET['autoplay'] == '1') ? 'autoplay' : '' ?>></video>
             
@@ -273,6 +273,12 @@ function formatDescriptionTimestamps(string $desc): string {
               <button class="yt-action-pill-btn single" data-bs-toggle="modal" data-bs-target="#shareAssetModal" title="Share & Embed">
                 <i class="bi bi-share"></i>
                 <span>Share</span>
+              </button>
+
+              <!-- Watch Later Button -->
+              <button class="yt-action-pill-btn single" id="watchLaterBtn" data-id="<?= $asset['id'] ?>" title="Save to Watch Later">
+                <i class="bi bi-clock" id="watchLaterIcon"></i>
+                <span id="watchLaterLabel">Save</span>
               </button>
 
               <!-- Download Button -->
@@ -493,21 +499,29 @@ function formatDescriptionTimestamps(string $desc): string {
       </div>
       <div class="modal-body">
         <label class="form-label small fw-bold text-secondary">Direct Watch Link</label>
-        <div class="input-group mb-3">
-          <input type="text" class="form-control bg-light" id="shareLinkInput" value="<?= $baseUrl ?>/watch.php?v=<?= $asset['id'] ?>" readonly>
-          <button class="btn btn-dark copy-btn" data-copy="<?= $baseUrl ?>/watch.php?v=<?= $asset['id'] ?>">Copy</button>
+        <div class="input-group mb-2">
+          <input type="text" class="form-control bg-light font-monospace small" id="shareLinkInput" value="<?= $baseUrl ?>/watch.php?v=<?= $asset['id'] ?>" readonly>
+          <button class="btn btn-dark copy-btn" id="copyShareLinkBtn" data-copy="<?= $baseUrl ?>/watch.php?v=<?= $asset['id'] ?>">Copy</button>
+        </div>
+
+        <!-- Start at timestamp switch (YouTube feature) -->
+        <div class="form-check form-switch mb-3 d-flex align-items-center gap-2">
+          <input class="form-check-input mt-0" type="checkbox" role="switch" id="shareAtTimestampCheck" style="cursor: pointer; width: 34px; height: 18px;">
+          <label class="form-check-label small fw-semibold text-dark mb-0" for="shareAtTimestampCheck" style="cursor: pointer;">
+            Start at <span class="badge bg-danger text-white font-monospace ms-1" id="shareCurrentTimeLabel">0:00</span>
+          </label>
         </div>
 
         <label class="form-label small fw-bold text-secondary">Direct CDN Stream Link</label>
         <div class="input-group mb-3">
-          <input type="text" class="form-control bg-light" value="<?= $streamUrl ?>" readonly>
+          <input type="text" class="form-control bg-light font-monospace small" value="<?= $streamUrl ?>" readonly>
           <button class="btn btn-outline-secondary copy-btn" data-copy="<?= $streamUrl ?>">Copy</button>
         </div>
 
         <label class="form-label small fw-bold text-secondary">Embed iFrame</label>
         <div class="input-group">
-          <input type="text" class="form-control bg-light" value='<?= htmlspecialchars($embedTag, ENT_QUOTES) ?>' readonly>
-          <button class="btn btn-outline-secondary copy-btn" data-copy='<?= htmlspecialchars($embedTag, ENT_QUOTES) ?>'>Copy</button>
+          <textarea class="form-control bg-light font-monospace small" id="shareEmbedInput" rows="2" readonly><?= htmlspecialchars($embedTag, ENT_QUOTES) ?></textarea>
+          <button class="btn btn-outline-secondary copy-btn" id="copyShareEmbedBtn" data-copy='<?= htmlspecialchars($embedTag, ENT_QUOTES) ?>'>Copy</button>
         </div>
       </div>
     </div>
@@ -540,6 +554,104 @@ if (dislikeBtn) {
   dislikeBtn.addEventListener('click', () => {
     dislikeBtn.classList.toggle('text-danger');
     showToast('Feedback submitted');
+  });
+}
+
+// Watch Later Toggle (Zero Login / Client-side localStorage)
+const watchLaterBtn = document.getElementById('watchLaterBtn');
+const currentAssetId = <?= json_encode($asset['id']) ?>;
+
+function getWatchLaterList() {
+  try {
+    const list = JSON.parse(localStorage.getItem('runit_watch_later') || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function updateWatchLaterButtonUI() {
+  if (!watchLaterBtn) return;
+  const list = getWatchLaterList();
+  const isSaved = list.includes(currentAssetId);
+  const icon = document.getElementById('watchLaterIcon');
+  const label = document.getElementById('watchLaterLabel');
+  if (isSaved) {
+    if (icon) icon.className = 'bi bi-check2-circle text-danger';
+    if (label) label.textContent = 'Saved';
+    watchLaterBtn.classList.add('active');
+  } else {
+    if (icon) icon.className = 'bi bi-clock';
+    if (label) label.textContent = 'Save';
+    watchLaterBtn.classList.remove('active');
+  }
+}
+
+if (watchLaterBtn) {
+  updateWatchLaterButtonUI();
+  watchLaterBtn.addEventListener('click', () => {
+    let list = getWatchLaterList();
+    if (list.includes(currentAssetId)) {
+      list = list.filter(id => id !== currentAssetId);
+      localStorage.setItem('runit_watch_later', JSON.stringify(list));
+      updateWatchLaterButtonUI();
+      if (typeof showToast === 'function') showToast('Removed from Watch Later');
+    } else {
+      list.push(currentAssetId);
+      localStorage.setItem('runit_watch_later', JSON.stringify(list));
+      updateWatchLaterButtonUI();
+      if (typeof showToast === 'function') showToast('Saved to Watch Later!');
+    }
+  });
+}
+
+// Share at current timestamp handler
+const shareModalEl = document.getElementById('shareAssetModal');
+const timestampCheck = document.getElementById('shareAtTimestampCheck');
+const shareTimeLabel = document.getElementById('shareCurrentTimeLabel');
+const shareLinkInput = document.getElementById('shareLinkInput');
+const copyShareLinkBtn = document.getElementById('copyShareLinkBtn');
+const shareEmbedInput = document.getElementById('shareEmbedInput');
+const copyShareEmbedBtn = document.getElementById('copyShareEmbedBtn');
+
+const baseWatchUrl = <?= json_encode($baseUrl . '/watch.php?v=' . $asset['id']) ?>;
+const baseEmbedTag = <?= json_encode($embedTag) ?>;
+
+function formatTimestampDisplay(sec) {
+  if (isNaN(sec) || sec < 0) return '0:00';
+  const mins = Math.floor(sec / 60);
+  const secs = Math.floor(sec % 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
+if (shareModalEl && timestampCheck) {
+  shareModalEl.addEventListener('show.bs.modal', () => {
+    const video = document.getElementById('mainVideo');
+    const currSec = video ? Math.floor(video.currentTime || 0) : 0;
+    if (shareTimeLabel) shareTimeLabel.textContent = formatTimestampDisplay(currSec);
+    timestampCheck.checked = false;
+    if (shareLinkInput) shareLinkInput.value = baseWatchUrl;
+    if (copyShareLinkBtn) copyShareLinkBtn.setAttribute('data-copy', baseWatchUrl);
+    if (shareEmbedInput) shareEmbedInput.value = baseEmbedTag;
+    if (copyShareEmbedBtn) copyShareEmbedBtn.setAttribute('data-copy', baseEmbedTag);
+  });
+
+  timestampCheck.addEventListener('change', () => {
+    const video = document.getElementById('mainVideo');
+    const currSec = video ? Math.floor(video.currentTime || 0) : 0;
+    if (timestampCheck.checked && currSec > 0) {
+      const timedUrl = `${baseWatchUrl}&t=${currSec}s`;
+      const timedEmbed = `<iframe src="<?= $baseUrl ?>/embed.php?v=<?= $asset['id'] ?>&t=${currSec}s" width="100%" height="450" frameborder="0" allowfullscreen></iframe>`;
+      if (shareLinkInput) shareLinkInput.value = timedUrl;
+      if (copyShareLinkBtn) copyShareLinkBtn.setAttribute('data-copy', timedUrl);
+      if (shareEmbedInput) shareEmbedInput.value = timedEmbed;
+      if (copyShareEmbedBtn) copyShareEmbedBtn.setAttribute('data-copy', timedEmbed);
+    } else {
+      if (shareLinkInput) shareLinkInput.value = baseWatchUrl;
+      if (copyShareLinkBtn) copyShareLinkBtn.setAttribute('data-copy', baseWatchUrl);
+      if (shareEmbedInput) shareEmbedInput.value = baseEmbedTag;
+      if (copyShareEmbedBtn) copyShareEmbedBtn.setAttribute('data-copy', baseEmbedTag);
+    }
   });
 }
 
@@ -593,4 +705,7 @@ if (commentInput && commentActions) {
 <!-- Player Controller Script -->
 <script src="<?= $baseUrl ?>/js/yt-player.js"></script>
 
-<?php include __DIR__ . '/includes/footer.php'; ?>
+<?php 
+$hideFooterShareModal = true;
+include __DIR__ . '/includes/footer.php'; 
+?>

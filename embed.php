@@ -85,7 +85,7 @@ $mute      = (isset($_GET['mute']) && $_GET['mute'] == '1');
     </a>
 
     <?php if ($asset['asset_type'] === 'video'): ?>
-      <div class="yt-player-container h-100 w-100 rounded-0" id="ytPlayerContainer">
+      <div class="yt-player-container h-100 w-100 rounded-0" id="ytPlayerContainer" data-asset-id="<?= $asset['id'] ?>">
         <video id="mainVideo" src="<?= $streamUrl ?>" poster="<?= $asset['thumbnail_path'] ? $baseUrl . '/' . ltrim($asset['thumbnail_path'], '/') : '' ?>" playsinline <?= $autoplay ? 'autoplay' : '' ?> <?= $mute ? 'muted' : '' ?>></video>
         
         <div class="yt-controls-overlay">

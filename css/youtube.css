@@ -1036,4 +1036,105 @@ body.sidebar-collapsed .yt-main-content {
   transform: scale(1.03);
 }
 
+/* ==========================================================================
+   VIDEO RESUME & WATCH LATER FEATURES
+   ========================================================================== */
+
+/* Thumbnail Progress Bar (Red YouTube-style bottom progress bar) */
+.yt-thumb-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.35);
+  z-index: 5;
+  display: none;
+  overflow: hidden;
+}
+
+.yt-thumb-progress-fill {
+  height: 100%;
+  background-color: #ff0000;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+/* Quick Watch Later button on video thumbnail hover */
+.yt-quick-watch-later {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease;
+  z-index: 6;
+}
+
+.yt-card:hover .yt-quick-watch-later,
+.yt-quick-watch-later.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.yt-quick-watch-later:hover,
+.yt-quick-watch-later.active {
+  background-color: #ff0000;
+  color: #fff;
+}
+
+/* Resume Playback Toast on Player */
+.yt-resume-toast {
+  position: absolute;
+  bottom: 56px;
+  left: 20px;
+  background: rgba(15, 15, 15, 0.92);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 45;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  animation: fadeIn 0.3s ease;
+}
+
+.yt-resume-toast .btn-link {
+  color: #ff4d4d;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.yt-resume-toast .btn-link:hover {
+  color: #ff8080;
+}
+
+/* Video Sub-filter buttons (All, History, Watch Later) */
+.video-subfilter-btn {
+  font-size: 0.82rem;
+  transition: all 0.15s ease;
+}
+
+.video-subfilter-btn.active {
+  background-color: #0f0f0f !important;
+  color: #fff !important;
+  border-color: #0f0f0f !important;
+}
+
 
