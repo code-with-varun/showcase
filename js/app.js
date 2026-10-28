@@ -111,19 +111,41 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Hover video playback on card preview
+  // Hover video playback on card preview (Restricted to a 10-second portion snippet)
+  const MAX_PREVIEW_DURATION = 10; // 10 seconds max snippet
+
   document.querySelectorAll('.yt-card').forEach(card => {
     const video = card.querySelector('video.hover-preview');
     if (!video) return;
-    let hoverTimeout;
+
+    let hoverTimeout = null;
+
+    // Loop the 10-second snippet while hovering
+    const onPreviewTimeUpdate = () => {
+      if (video.currentTime >= MAX_PREVIEW_DURATION) {
+        video.currentTime = 0;
+      }
+    };
+
+    video.addEventListener('timeupdate', onPreviewTimeUpdate);
+    video.addEventListener('ended', () => {
+      video.currentTime = 0;
+      video.play().catch(() => {});
+    });
+
     card.addEventListener('mouseenter', () => {
+      // 180ms debounce so rapid swiping across cards doesn't load/trigger playback
       hoverTimeout = setTimeout(() => {
         video.currentTime = 0;
-        video.play().catch(() => {});
-      }, 200);
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {});
+        }
+      }, 180);
     });
+
     card.addEventListener('mouseleave', () => {
-      clearTimeout(hoverTimeout);
+      if (hoverTimeout) clearTimeout(hoverTimeout);
       video.pause();
       video.currentTime = 0;
     });

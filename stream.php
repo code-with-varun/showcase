@@ -38,13 +38,15 @@ if ($referrer) {
     } catch (Exception $e) {}
 }
 
-// Increment view count with light session debounce
-if (session_status() === PHP_SESSION_NONE) session_start();
-$viewKey = 'viewed_' . $asset['id'];
-if (!isset($_SESSION[$viewKey])) {
-    $_SESSION[$viewKey] = time();
-    $updateView = $pdo->prepare("UPDATE assets SET views_count = views_count + 1 WHERE id = :id");
-    $updateView->execute([':id' => $asset['id']]);
+// Increment view count with light session debounce (skip for card hover previews)
+if (!isset($_GET['preview'])) {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    $viewKey = 'viewed_' . $asset['id'];
+    if (!isset($_SESSION[$viewKey])) {
+        $_SESSION[$viewKey] = time();
+        $updateView = $pdo->prepare("UPDATE assets SET views_count = views_count + 1 WHERE id = :id");
+        $updateView->execute([':id' => $asset['id']]);
+    }
 }
 
 $fileSize = filesize($filePath);

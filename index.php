@@ -202,8 +202,8 @@ include __DIR__ . '/includes/header.php';
                 <div class="yt-thumb-wrapper position-relative">
                   <a href="<?= $watchUrl ?>" class="d-block w-100 h-100 text-decoration-none">
                     <img src="<?= $thumbUrl ?>" alt="<?= h($vid['title']) ?>" loading="lazy">
-                    <!-- Hover silent video preview -->
-                    <video class="hover-preview" src="<?= $streamUrl ?>" muted preload="none"></video>
+                    <!-- Hover silent video preview (10s snippet) -->
+                    <video class="hover-preview" src="<?= $streamUrl ?>&preview=1" muted playsinline preload="none"></video>
                     <span class="yt-duration-badge">
                       <?= $vid['duration_seconds'] > 0 ? formatDuration((int)$vid['duration_seconds']) : formatBytes((float)$vid['file_size']) ?>
                     </span>
