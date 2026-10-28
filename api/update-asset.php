@@ -31,6 +31,7 @@ if (!$asset) {
 $title = !empty($_POST['title']) ? trim($_POST['title']) : $asset['title'];
 $desc  = isset($_POST['description']) ? trim($_POST['description']) : $asset['description'];
 $categoryId = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : $asset['category_id'];
+$project = isset($_POST['project']) ? trim($_POST['project']) : ($asset['project'] ?? null);
 $isPublic = isset($_POST['is_public']) ? (int)$_POST['is_public'] : $asset['is_public'];
 $duration = isset($_POST['duration_seconds']) ? (int)$_POST['duration_seconds'] : $asset['duration_seconds'];
 
@@ -48,7 +49,7 @@ if (!empty($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR
 // Update assets record
 $upStmt = $pdo->prepare("
     UPDATE assets 
-    SET title = :title, description = :desc, category_id = :cat,
+    SET title = :title, description = :desc, category_id = :cat, project = :proj,
         thumbnail_path = :thumb, is_public = :pub, duration_seconds = :dur,
         updated_at = NOW()
     WHERE id = :id
@@ -57,6 +58,7 @@ $upStmt->execute([
     ':title' => $title,
     ':desc'  => $desc,
     ':cat'   => $categoryId,
+    ':proj'  => ($project !== '' ? $project : null),
     ':thumb' => $thumbPath,
     ':pub'   => $isPublic,
     ':dur'   => $duration,

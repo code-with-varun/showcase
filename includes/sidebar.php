@@ -39,12 +39,22 @@ $currentType = $_GET['type'] ?? '';
         <span class="badge bg-secondary ms-auto small nav-text"><?= (int)$sidebarStats['count_videos'] ?></span>
       </a>
 
-      <!-- 2. IMAGES -->
-      <a class="nav-link <?= ($currentType === 'image') ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=image">
+      <!-- 2. IMAGES (PROJECT-WISE) -->
+      <a class="nav-link <?= ($currentType === 'image' && empty($_GET['project'])) ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=image">
         <i class="bi bi-images text-info"></i>
         <span class="nav-text">2. Images</span>
         <span class="badge bg-secondary ms-auto small nav-text"><?= (int)$sidebarStats['count_images'] ?></span>
       </a>
+
+      <!-- Image Projects Sub-Menu -->
+      <div class="ps-3 d-flex flex-column gap-1 nav-text">
+        <a class="nav-link py-1 small <?= ($currentType === 'image' && ($_GET['project'] ?? '') === 'ScripVault') ? 'active text-primary fw-bold' : 'text-secondary' ?>" href="<?= $baseUrl ?>/index.php?type=image&project=ScripVault" style="font-size: 0.82rem;">
+          <i class="bi bi-window-stack me-1 text-primary"></i> ScripVault
+        </a>
+        <a class="nav-link py-1 small <?= ($currentType === 'image' && ($_GET['project'] ?? '') === 'AI Motion Comics') ? 'active text-danger fw-bold' : 'text-secondary' ?>" href="<?= $baseUrl ?>/index.php?type=image&project=AI+Motion+Comics" style="font-size: 0.82rem;">
+          <i class="bi bi-film me-1 text-danger"></i> AI Motion Comics
+        </a>
+      </div>
 
       <!-- 3. DOCUMENTS & ZIPS -->
       <a class="nav-link <?= ($currentType === 'docs_zips') ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=docs_zips">

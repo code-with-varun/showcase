@@ -26,13 +26,17 @@ $statsStmt = $pdo->query("
 ");
 $studioStats = $statsStmt->fetch();
 
-// Categories
+// Categories & Projects
 $catStmt = $pdo->query("SELECT * FROM categories ORDER BY name ASC");
 $categories = $catStmt->fetchAll();
+
+$projStmt = $pdo->query("SELECT DISTINCT project FROM assets WHERE project IS NOT NULL AND project != '' ORDER BY project ASC");
+$allProjects = $projStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
 
 // Fetch assets with filters
 $typeFilter = $_GET['type'] ?? '';
 $sourceFilter = $_GET['source'] ?? '';
+$projectFilter = trim($_GET['project'] ?? '');
 $searchFilter = trim($_GET['q'] ?? '');
 
 $where = ['1=1'];
@@ -49,6 +53,10 @@ if ($typeFilter) {
 if ($sourceFilter) {
     $where[] = 'a.source = :source';
     $params[':source'] = $sourceFilter;
+}
+if ($projectFilter) {
+    $where[] = 'a.project = :project';
+    $params[':project'] = $projectFilter;
 }
 if ($searchFilter) {
     $where[] = '(a.title LIKE :sq1 OR a.file_name LIKE :sq2 OR a.id LIKE :sq3)';
@@ -192,11 +200,21 @@ include __DIR__ . '/includes/header.php';
               </div>
 
               <div class="col-md-6">
+                <label class="form-label text-secondary small fw-bold">Project Group (Optional)</label>
+                <input type="text" name="project" list="projectsDatalist" class="form-control bg-light text-dark border-secondary-subtle" placeholder="e.g. ScripVault, AI Motion Comics">
+                <datalist id="projectsDatalist">
+                  <?php foreach ($allProjects as $p): ?>
+                    <option value="<?= h($p) ?>">
+                  <?php endforeach; ?>
+                </datalist>
+              </div>
+
+              <div class="col-md-6">
                 <label class="form-label text-secondary small fw-bold">Custom Thumbnail (Optional for videos/docs)</label>
                 <input type="file" name="thumbnail" accept="image/*" class="form-control bg-light text-dark border-secondary-subtle">
               </div>
 
-              <div class="col-md-6">
+              <div class="col-12">
                 <label class="form-label text-secondary small fw-bold">Tags (Comma-separated)</label>
                 <input type="text" name="tags" class="form-control bg-light text-dark border-secondary-subtle" placeholder="motion-comic, 4k, portfolio">
               </div>
@@ -269,22 +287,29 @@ include __DIR__ . '/includes/header.php';
 
       <!-- Filters Form -->
       <form method="GET" action="" class="d-flex flex-wrap gap-2">
-        <input type="text" name="q" class="form-control form-control-sm bg-white text-dark border-secondary-subtle" placeholder="Search title or ID..." value="<?= h($searchFilter) ?>" style="width: 180px;">
+        <input type="text" name="q" class="form-control form-control-sm bg-white text-dark border-secondary-subtle" placeholder="Search title or ID..." value="<?= h($searchFilter) ?>" style="width: 170px;">
         
-        <select name="type" class="form-select form-select-sm bg-white text-dark border-secondary-subtle" style="width: 140px;" onchange="this.form.submit()">
+        <select name="type" class="form-select form-select-sm bg-white text-dark border-secondary-subtle" style="width: 135px;" onchange="this.form.submit()">
           <option value="">All 3 Categories</option>
           <option value="video" <?= $typeFilter === 'video' ? 'selected' : '' ?>>1. Videos</option>
           <option value="image" <?= $typeFilter === 'image' ? 'selected' : '' ?>>2. Images</option>
           <option value="docs_zips" <?= $typeFilter === 'docs_zips' ? 'selected' : '' ?>>3. Docs & Zips</option>
         </select>
 
-        <select name="source" class="form-select form-select-sm bg-white text-dark border-secondary-subtle" style="width: 130px;" onchange="this.form.submit()">
+        <select name="project" class="form-select form-select-sm bg-white text-dark border-secondary-subtle" style="width: 140px;" onchange="this.form.submit()">
+          <option value="">All Projects</option>
+          <?php foreach ($allProjects as $p): ?>
+            <option value="<?= h($p) ?>" <?= $projectFilter === $p ? 'selected' : '' ?>><?= h($p) ?></option>
+          <?php endforeach; ?>
+        </select>
+
+        <select name="source" class="form-select form-select-sm bg-white text-dark border-secondary-subtle" style="width: 125px;" onchange="this.form.submit()">
           <option value="">All Sources</option>
           <option value="web_upload" <?= $sourceFilter === 'web_upload' ? 'selected' : '' ?>>Web Upload</option>
           <option value="ftp_sync" <?= $sourceFilter === 'ftp_sync' ? 'selected' : '' ?>>FTP Sync</option>
         </select>
 
-        <?php if ($typeFilter || $sourceFilter || $searchFilter): ?>
+        <?php if ($typeFilter || $sourceFilter || $projectFilter || $searchFilter): ?>
           <a href="<?= $baseUrl ?>/studio.php" class="btn btn-outline-secondary btn-sm" title="Clear Filters">
             <i class="bi bi-x-lg"></i>
           </a>
@@ -299,6 +324,7 @@ include __DIR__ . '/includes/header.php';
             <th scope="col" style="width: 70px;">Asset</th>
             <th scope="col">Title & ID</th>
             <th scope="col">Category</th>
+            <th scope="col">Project</th>
             <th scope="col">Size</th>
             <th scope="col">Source</th>
             <th scope="col">Views</th>
@@ -309,7 +335,7 @@ include __DIR__ . '/includes/header.php';
         <tbody>
           <?php if (empty($assetsList)): ?>
             <tr>
-              <td colspan="8" class="text-center py-4 text-secondary">
+              <td colspan="9" class="text-center py-4 text-secondary">
                 No assets found matching the criteria. Use the uploader or run sync above.
               </td>
             </tr>
@@ -348,6 +374,7 @@ include __DIR__ . '/includes/header.php';
                 'title'       => $asset['title'],
                 'description' => $asset['description'],
                 'category_id' => $asset['category_id'],
+                'project'     => $asset['project'],
                 'duration'    => $asset['duration_seconds'],
                 'is_public'   => $asset['is_public'],
                 'tags'        => $assetTags,
@@ -364,6 +391,13 @@ include __DIR__ . '/includes/header.php';
                   <div class="small text-secondary font-monospace">ID: <?= $asset['id'] ?> • <?= h($asset['file_name']) ?></div>
                 </td>
                 <td><span class="badge bg-light text-dark border"><?= h($asset['category_name'] ?: 'General') ?></span></td>
+                <td>
+                  <?php if (!empty($asset['project'])): ?>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle"><i class="bi bi-folder2 me-1"></i><?= h($asset['project']) ?></span>
+                  <?php else: ?>
+                    <span class="text-secondary small">—</span>
+                  <?php endif; ?>
+                </td>
                 <td><span class="small font-monospace"><?= formatBytes((float)$asset['file_size']) ?></span></td>
                 <td>
                   <?php if ($asset['source'] === 'web_upload'): ?>
@@ -421,7 +455,7 @@ include __DIR__ . '/includes/header.php';
           </div>
 
           <div class="row g-3 mb-3">
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label text-secondary small fw-bold">Category</label>
               <select name="category_id" id="editCategory" class="form-select bg-light text-dark border-secondary-subtle">
                 <option value="">None / General</option>
@@ -431,7 +465,12 @@ include __DIR__ . '/includes/header.php';
               </select>
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-4">
+              <label class="form-label text-secondary small fw-bold">Project</label>
+              <input type="text" name="project" id="editProject" list="projectsDatalist" class="form-control bg-light text-dark border-secondary-subtle" placeholder="e.g. ScripVault">
+            </div>
+
+            <div class="col-md-4">
               <label class="form-label text-secondary small fw-bold">Visibility</label>
               <select name="is_public" id="editVisibility" class="form-select bg-light text-dark border-secondary-subtle">
                 <option value="1">Public (Visible in Showcase Feed)</option>
@@ -630,6 +669,7 @@ document.querySelectorAll('.edit-asset-btn').forEach(btn => {
     document.getElementById('editTitle').value = asset.title;
     document.getElementById('editDesc').value = asset.description || '';
     document.getElementById('editCategory').value = asset.category_id || '';
+    document.getElementById('editProject').value = asset.project || '';
     document.getElementById('editVisibility').value = asset.is_public;
     document.getElementById('editTags').value = asset.tags || '';
 

@@ -604,3 +604,94 @@ body.sidebar-collapsed .yt-main-content {
     padding: 1rem;
   }
 }
+
+/* ==========================================================================
+   PROJECT-WISE GROUPING & LIGHTBOX
+   ========================================================================== */
+.project-card-container {
+  background: var(--yt-surface);
+  border: 1px solid var(--yt-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.project-card-container:hover {
+  border-color: #d0d0d0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.project-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  background-color: #f0f0f0;
+  flex-shrink: 0;
+}
+
+.project-filter-btn {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.85rem;
+  font-weight: 500;
+  border-radius: 18px;
+  transition: all 0.15s ease;
+}
+
+.project-filter-btn.active {
+  background-color: var(--yt-text) !important;
+  color: #fff !important;
+  border-color: var(--yt-text) !important;
+}
+
+.image-thumb-card {
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: #f8f9fa;
+  border: 1px solid var(--yt-border);
+}
+
+.image-thumb-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.lightbox-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f0f0f;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.lightbox-nav-btn:hover {
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  color: var(--yt-red);
+}
+
+.lightbox-prev {
+  left: 15px;
+}
+
+.lightbox-next {
+  right: 15px;
+}
+

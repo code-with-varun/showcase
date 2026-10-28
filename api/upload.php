@@ -66,6 +66,9 @@ $title = !empty($_POST['title']) ? trim($_POST['title']) : $sync->formatTitle($o
 $slug = $sync->slugify($title) . '-' . substr($id, 0, 4);
 $description = !empty($_POST['description']) ? trim($_POST['description']) : "Uploaded via Web Studio: {$originalName}";
 
+// Project assignment
+$project = !empty($_POST['project']) ? trim($_POST['project']) : null;
+
 // Category ID resolution
 $categoryId = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
 if (!$categoryId) {
@@ -93,11 +96,11 @@ if ($assetType === 'image') {
 // Insert into assets table
 $insert = $pdo->prepare("
     INSERT INTO assets (
-        id, title, slug, description, asset_type, category_id,
+        id, title, slug, description, asset_type, category_id, project,
         file_path, file_name, file_size, mime_type, extension,
         thumbnail_path, source, is_public, created_at, updated_at
     ) VALUES (
-        :id, :title, :slug, :desc, :type, :cat_id,
+        :id, :title, :slug, :desc, :type, :cat_id, :proj,
         :path, :filename, :size, :mime, :ext,
         :thumb, 'web_upload', 1, NOW(), NOW()
     )
@@ -110,6 +113,7 @@ $insert->execute([
     ':desc'     => $description,
     ':type'     => $assetType,
     ':cat_id'   => $categoryId,
+    ':proj'     => $project,
     ':path'     => $relPath,
     ':filename' => $newFileName,
     ':size'     => $fileSize,

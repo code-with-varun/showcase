@@ -39,7 +39,7 @@ class SyncManager {
         $stats['scanned'] = count($filesOnDisk);
 
         // Fetch all existing file paths from MySQL
-        $stmt = $this->pdo->query("SELECT id, file_path, file_size FROM assets");
+        $stmt = $this->pdo->query("SELECT id, file_path, file_size, project FROM assets");
         $existingAssets = [];
         while ($row = $stmt->fetch()) {
             $normalized = str_replace('\\', '/', $row['file_path']);
@@ -55,20 +55,31 @@ class SyncManager {
             $ext = strtolower(pathinfo($file['filename'], PATHINFO_EXTENSION));
             $assetType = $this->determineAssetType($ext);
             $categoryId = $this->resolveCategoryId($relativePath, $assetType, $categories);
+            $project = $this->detectProject($relativePath, $assetType);
 
             if (isset($existingAssets[$relativePath])) {
-                // Already in database -> check if size changed
+                // Already in database -> check if size changed or project needs backfilling
                 $existing = $existingAssets[$relativePath];
+                $needsUpdate = false;
+                $updateFields = [];
+                $updateParams = [':id' => $existing['id']];
+
                 if ((int)$existing['file_size'] !== $file['size']) {
-                    $updateStmt = $this->pdo->prepare("
-                        UPDATE assets 
-                        SET file_size = :size, updated_at = NOW() 
-                        WHERE id = :id
-                    ");
-                    $updateStmt->execute([
-                        ':size' => $file['size'],
-                        ':id'   => $existing['id']
-                    ]);
+                    $updateFields[] = "file_size = :size";
+                    $updateParams[':size'] = $file['size'];
+                    $needsUpdate = true;
+                }
+                if (empty($existing['project']) && $project) {
+                    $updateFields[] = "project = :project";
+                    $updateParams[':project'] = $project;
+                    $needsUpdate = true;
+                }
+
+                if ($needsUpdate) {
+                    $updateFields[] = "updated_at = NOW()";
+                    $setSql = implode(', ', $updateFields);
+                    $updateStmt = $this->pdo->prepare("UPDATE assets SET $setSql WHERE id = :id");
+                    $updateStmt->execute($updateParams);
                     $stats['updated']++;
                     $stats['details'][] = "Updated: {$relativePath} (" . formatBytes($file['size']) . ")";
                 }
@@ -82,11 +93,11 @@ class SyncManager {
 
                 $insertStmt = $this->pdo->prepare("
                     INSERT INTO assets (
-                        id, title, slug, description, asset_type, category_id,
+                        id, title, slug, description, asset_type, category_id, project,
                         file_path, file_name, file_size, mime_type, extension,
                         thumbnail_path, source, is_public, created_at, updated_at
                     ) VALUES (
-                        :id, :title, :slug, :desc, :type, :cat_id,
+                        :id, :title, :slug, :desc, :type, :cat_id, :project,
                         :path, :filename, :size, :mime, :ext,
                         :thumb, 'ftp_sync', 1, NOW(), NOW()
                     )
@@ -99,6 +110,7 @@ class SyncManager {
                     ':desc'     => "Auto-synced from media repository: {$file['filename']}",
                     ':type'     => $assetType,
                     ':cat_id'   => $categoryId,
+                    ':project'  => $project,
                     ':path'     => $relativePath,
                     ':filename' => $file['filename'],
                     ':size'     => $file['size'],
@@ -108,7 +120,9 @@ class SyncManager {
                 ]);
 
                 // Add default tags
-                $this->addTags($id, [$ext, strtoupper($assetType), 'Synced']);
+                $tags = [$ext, strtoupper($assetType), 'Synced'];
+                if ($project) $tags[] = $project;
+                $this->addTags($id, $tags);
 
                 $stats['added']++;
                 $stats['details'][] = "Added: {$title} ({$relativePath})";
@@ -211,6 +225,49 @@ class SyncManager {
             return $categories['archives'] ?? null;
         }
         return null;
+    }
+
+    /**
+     * Auto-detect project group name from relative filesystem path
+     */
+    public function detectProject(string $relativePath, string $type): ?string {
+        $normalized = str_replace('\\', '/', $relativePath);
+        $parts = explode('/', trim($normalized, '/'));
+
+        // e.g. assets/images/scripvault/screencapture...png
+        if (count($parts) >= 3 && $parts[0] === 'assets') {
+            if ($parts[1] === 'images' && count($parts) > 3) {
+                $folder = $parts[2];
+                if (strtolower($folder) === 'scripvault') {
+                    return 'ScripVault';
+                }
+                return $this->formatProjectName($folder);
+            }
+            if ($parts[1] === 'motion-comics') {
+                return 'AI Motion Comics';
+            }
+            // For other asset types with subfolders (e.g. assets/videos/{project}/...)
+            if (count($parts) > 3) {
+                return $this->formatProjectName($parts[2]);
+            }
+        }
+
+        if (stripos($normalized, 'scripvault') !== false) {
+            return 'ScripVault';
+        }
+        if (stripos($normalized, 'motion-comic') !== false) {
+            return 'AI Motion Comics';
+        }
+
+        return null;
+    }
+
+    /**
+     * Clean folder string into project title
+     */
+    public function formatProjectName(string $folder): string {
+        $clean = preg_replace('/[_\-]+/', ' ', $folder);
+        return ucwords(trim($clean));
     }
 
     /**

@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS `assets` (
   `description` TEXT NULL,
   `asset_type` ENUM('video', 'image', 'document', 'archive') NOT NULL,
   `category_id` INT NULL,
+  `project` VARCHAR(100) NULL,
   `file_path` VARCHAR(500) NOT NULL UNIQUE,
   `file_name` VARCHAR(255) NOT NULL,
   `file_size` BIGINT UNSIGNED NOT NULL DEFAULT 0,
@@ -44,6 +45,7 @@ CREATE TABLE IF NOT EXISTS `assets` (
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_asset_type` (`asset_type`),
   INDEX `idx_category` (`category_id`),
+  INDEX `idx_project` (`project`),
   INDEX `idx_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
