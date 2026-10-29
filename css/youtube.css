@@ -619,10 +619,13 @@ html.sidebar-pre-collapsed body .yt-main-content {
 /* Responsive adjustments */
 @media (max-width: 991.98px) {
   .yt-sidebar {
-    transform: translateX(-100%);
+    transform: translateX(-100%) !important;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 1040 !important;
   }
   body.sidebar-mobile-open .yt-sidebar {
-    transform: translateX(0);
+    transform: translateX(0) !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25) !important;
   }
   .yt-main-content {
     margin-left: 0 !important;
@@ -1384,51 +1387,55 @@ body.sidebar-mobile-open .yt-sidebar-backdrop {
    ========================================================================== */
 #scrollToTopBtn {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 44px;
-  height: 44px;
+  bottom: 28px;
+  right: 28px;
+  width: 46px;
+  height: 46px;
   border-radius: 50% !important;
-  background-color: var(--yt-red, #cc0000);
-  color: #fff;
-  border: none;
-  box-shadow: 0 4px 14px rgba(204, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background-color: #0f0f0f !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   font-size: 1.25rem;
   cursor: pointer;
-  z-index: 1050;
+  z-index: 9999 !important;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(18px) scale(0.85);
+  pointer-events: none;
+  transform: translateY(16px) scale(0.85);
   transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0.25s, background-color 0.2s ease, box-shadow 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #scrollToTopBtn.visible {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0) scale(1);
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateY(0) scale(1) !important;
 }
 
 #scrollToTopBtn:hover {
-  background-color: #b30000;
-  color: #fff;
-  transform: translateY(-3px) scale(1.08);
-  box-shadow: 0 6px 20px rgba(204, 0, 0, 0.55);
+  background-color: var(--yt-red, #cc0000) !important;
+  color: #ffffff !important;
+  transform: translateY(-4px) scale(1.08) !important;
+  box-shadow: 0 8px 24px rgba(204, 0, 0, 0.45);
 }
 
 #scrollToTopBtn:active {
-  transform: translateY(0) scale(0.92);
+  transform: translateY(0) scale(0.94) !important;
 }
 
 @media (max-width: 767.98px) {
   #scrollToTopBtn {
-    bottom: 68px; /* Elevated above mobile footer links */
-    right: 16px;
-    width: 42px;
-    height: 42px;
-    font-size: 1.15rem;
+    bottom: 74px; /* Elevated cleanly above mobile bottom nav / footer */
+    right: 18px;
+    width: 44px;
+    height: 44px;
+    font-size: 1.2rem;
   }
 }
 

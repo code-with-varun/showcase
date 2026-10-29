@@ -7,20 +7,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Sidebar Toggle - Persist collapsed state in localStorage
   // ---------------------------------------------------------------
   const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+  const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+  const sidebarBackdrop = document.getElementById('ytSidebarBackdrop');
   const SIDEBAR_KEY = 'runit_sidebar_collapsed';
 
-  // Restore sidebar state immediately on load
+  // Restore sidebar state immediately on load and clear pre-collapse flag
   function restoreSidebarState() {
+    document.documentElement.classList.remove('sidebar-pre-collapsed');
     if (window.innerWidth >= 992) {
       if (localStorage.getItem(SIDEBAR_KEY) === '1') {
         document.body.classList.add('sidebar-collapsed');
+      } else {
+        document.body.classList.remove('sidebar-collapsed');
       }
     }
   }
   restoreSidebarState();
 
   if (sidebarToggleBtn) {
-    sidebarToggleBtn.addEventListener('click', () => {
+    sidebarToggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.documentElement.classList.remove('sidebar-pre-collapsed');
       if (window.innerWidth < 992) {
         document.body.classList.toggle('sidebar-mobile-open');
       } else {
@@ -30,8 +37,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Sidebar close button (mobile)
+  if (sidebarCloseBtn) {
+    sidebarCloseBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.body.classList.remove('sidebar-mobile-open');
+    });
+  }
+
   // Sidebar backdrop for mobile close
-  const sidebarBackdrop = document.getElementById('ytSidebarBackdrop');
   if (sidebarBackdrop) {
     sidebarBackdrop.addEventListener('click', () => {
       document.body.classList.remove('sidebar-mobile-open');
@@ -201,8 +215,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---------------------------------------------------------------
   const scrollToTopBtn = document.getElementById('scrollToTopBtn');
   if (scrollToTopBtn) {
+    const getScrollTop = () => {
+      return window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    };
+
     const toggleScrollBtn = () => {
-      if (window.scrollY > 280) {
+      if (getScrollTop() > 150) {
         scrollToTopBtn.classList.add('visible');
       } else {
         scrollToTopBtn.classList.remove('visible');
@@ -210,13 +228,26 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.addEventListener('scroll', toggleScrollBtn, { passive: true });
+    document.addEventListener('scroll', toggleScrollBtn, { passive: true });
     toggleScrollBtn();
 
-    scrollToTopBtn.addEventListener('click', () => {
+    const doScrollToTop = (e) => {
+      e.preventDefault();
       window.scrollTo({
         top: 0,
         behavior: 'smooth'
       });
-    });
+      document.documentElement.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+      document.body.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    };
+
+    scrollToTopBtn.addEventListener('click', doScrollToTop);
+    scrollToTopBtn.addEventListener('touchend', doScrollToTop);
   }
 });

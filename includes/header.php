@@ -26,8 +26,8 @@ $activePage = basename($_SERVER['PHP_SELF'], '.php');
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   
-  <!-- Custom YouTube Theme -->
-  <link rel="stylesheet" href="<?= $baseUrl ?>/css/youtube.css">
+  <!-- Custom YouTube Theme with Auto Cache-Busting -->
+  <link rel="stylesheet" href="<?= $baseUrl ?>/css/youtube.css?v=<?= file_exists(__DIR__ . '/../css/youtube.css') ? filemtime(__DIR__ . '/../css/youtube.css') : time() ?>">
 
   <!-- Restore sidebar collapse state before first paint (prevents flicker) -->
   <script>

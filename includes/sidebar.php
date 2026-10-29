@@ -39,6 +39,17 @@ $currentType = $_GET['type'] ?? '';
 ?>
 <aside class="yt-sidebar" id="ytSidebar">
   <div class="d-flex flex-column h-100">
+    <!-- Mobile drawer header with close button -->
+    <div class="d-flex d-lg-none align-items-center justify-content-between pb-3 mb-2 border-bottom border-light-subtle px-2">
+      <div class="d-flex align-items-center gap-2">
+        <img src="<?= $baseUrl ?>/public/Runit%20logo%20pack/app-icon-red.png" alt="Runit" height="24" class="rounded">
+        <span class="fw-bold text-dark small" style="letter-spacing: -0.3px;">RUNIT SHOWCASE</span>
+      </div>
+      <button class="btn btn-sm btn-light border-0 rounded-circle text-secondary p-1" id="sidebarCloseBtn" aria-label="Close sidebar" style="width: 32px; height: 32px;">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
     <nav class="nav flex-column gap-1">
       <!-- VIDEOS -->
       <a class="nav-link <?= ($currentType === 'video' || (empty($currentType) && basename($_SERVER['PHP_SELF']) === 'index.php')) ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=video">

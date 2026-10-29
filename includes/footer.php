@@ -143,13 +143,13 @@
     </div>
   </div>
 
-  <!-- Universal Scroll to Top Button -->
-  <button type="button" class="btn btn-danger shadow" id="scrollToTopBtn" aria-label="Scroll to top" title="Scroll to top">
-    <i class="bi bi-arrow-up"></i>
+  <!-- Universal Scroll to Top Floating Action Button -->
+  <button type="button" id="scrollToTopBtn" aria-label="Scroll to top" title="Scroll to top">
+    <i class="bi bi-chevron-up"></i>
   </button>
 
-  <!-- Scripts -->
+  <!-- Scripts with Auto Cache-Busting -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="<?= $baseUrl ?>/js/app.js"></script>
+  <script src="<?= $baseUrl ?>/js/app.js?v=<?= file_exists(__DIR__ . '/../js/app.js') ? filemtime(__DIR__ . '/../js/app.js') : time() ?>"></script>
 </body>
 </html>
