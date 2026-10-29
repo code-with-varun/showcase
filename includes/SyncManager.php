@@ -95,11 +95,11 @@ class SyncManager {
                     INSERT INTO assets (
                         id, title, slug, description, asset_type, category_id, project,
                         file_path, file_name, file_size, mime_type, extension,
-                        thumbnail_path, source, is_public, created_at, updated_at
+                        thumbnail_path, source, visibility, is_public, created_at, updated_at
                     ) VALUES (
                         :id, :title, :slug, :desc, :type, :cat_id, :project,
                         :path, :filename, :size, :mime, :ext,
-                        :thumb, 'ftp_sync', 1, NOW(), NOW()
+                        :thumb, 'ftp_sync', 1, 1, NOW(), NOW()
                     )
                 ");
 
@@ -334,10 +334,32 @@ class SyncManager {
             }
         }
         $mimeMap = [
-            'mp4' => 'video/mp4', 'webm' => 'video/webm', 'mov' => 'video/quicktime', 'mkv' => 'video/x-matroska',
-            'png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'webp' => 'image/webp', 'gif' => 'image/gif', 'svg' => 'image/svg+xml',
-            'pdf' => 'application/pdf', 'txt' => 'text/plain', 'csv' => 'text/csv',
-            'zip' => 'application/zip', 'rar' => 'application/x-rar-compressed', '7z' => 'application/x-7z-compressed',
+            'mp4'  => 'video/mp4',
+            'm4v'  => 'video/mp4',
+            'webm' => 'video/webm',
+            'mov'  => 'video/quicktime',
+            'mkv'  => 'video/x-matroska',
+            'avi'  => 'video/x-msvideo',
+            'wmv'  => 'video/x-ms-wmv',
+            'flv'  => 'video/x-flv',
+            'mpg'  => 'video/mpeg',
+            'mpeg' => 'video/mpeg',
+            'ts'   => 'video/mp2t',
+            '3gp'  => 'video/3gpp',
+            'png'  => 'image/png',
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp',
+            'gif'  => 'image/gif',
+            'svg'  => 'image/svg+xml',
+            'avif' => 'image/avif',
+            'bmp'  => 'image/bmp',
+            'pdf'  => 'application/pdf',
+            'txt'  => 'text/plain',
+            'csv'  => 'text/csv',
+            'zip'  => 'application/zip',
+            'rar'  => 'application/x-rar-compressed',
+            '7z'   => 'application/x-7z-compressed',
         ];
         return $mimeMap[strtolower($ext)] ?? 'application/octet-stream';
     }

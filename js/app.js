@@ -3,17 +3,50 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Sidebar Toggle
+  // ---------------------------------------------------------------
+  // Sidebar Toggle - Persist collapsed state in localStorage
+  // ---------------------------------------------------------------
   const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+  const SIDEBAR_KEY = 'runit_sidebar_collapsed';
+
+  // Restore sidebar state immediately on load
+  function restoreSidebarState() {
+    if (window.innerWidth >= 992) {
+      if (localStorage.getItem(SIDEBAR_KEY) === '1') {
+        document.body.classList.add('sidebar-collapsed');
+      }
+    }
+  }
+  restoreSidebarState();
+
   if (sidebarToggleBtn) {
     sidebarToggleBtn.addEventListener('click', () => {
       if (window.innerWidth < 992) {
         document.body.classList.toggle('sidebar-mobile-open');
       } else {
-        document.body.classList.toggle('sidebar-collapsed');
+        const isNowCollapsed = document.body.classList.toggle('sidebar-collapsed');
+        localStorage.setItem(SIDEBAR_KEY, isNowCollapsed ? '1' : '0');
       }
     });
   }
+
+  // Sidebar backdrop for mobile close
+  const sidebarBackdrop = document.getElementById('ytSidebarBackdrop');
+  if (sidebarBackdrop) {
+    sidebarBackdrop.addEventListener('click', () => {
+      document.body.classList.remove('sidebar-mobile-open');
+    });
+  }
+
+  // Sidebar nav links: auto-close drawer on mobile, maintain state on desktop
+  const sidebarLinks = document.querySelectorAll('#ytSidebar .nav-link');
+  sidebarLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      if (window.innerWidth < 992) {
+        document.body.classList.remove('sidebar-mobile-open');
+      }
+    });
+  });
 
   // Toast Helper
   const toastEl = document.getElementById('appToast');
@@ -162,4 +195,28 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+
+  // ---------------------------------------------------------------
+  // Scroll to Top Floating Button
+  // ---------------------------------------------------------------
+  const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+  if (scrollToTopBtn) {
+    const toggleScrollBtn = () => {
+      if (window.scrollY > 280) {
+        scrollToTopBtn.classList.add('visible');
+      } else {
+        scrollToTopBtn.classList.remove('visible');
+      }
+    };
+
+    window.addEventListener('scroll', toggleScrollBtn, { passive: true });
+    toggleScrollBtn();
+
+    scrollToTopBtn.addEventListener('click', () => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    });
+  }
 });

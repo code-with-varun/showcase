@@ -7,18 +7,33 @@
  */
 $pdo = getDB();
 
-// Quick counts by the 3 simple categories
-$statStmt = $pdo->query("
-    SELECT 
-        SUM(CASE WHEN asset_type = 'video' THEN 1 ELSE 0 END) AS count_videos,
-        SUM(CASE WHEN asset_type = 'image' THEN 1 ELSE 0 END) AS count_images,
-        SUM(CASE WHEN asset_type IN ('document', 'archive') THEN 1 ELSE 0 END) AS count_docs_zips
-    FROM assets
-    WHERE is_public = 1
-");
+// Quick counts: only show publicly visible assets to guests; admin sees all
+$isAdmin = (function_exists('isAdminLoggedIn') && isAdminLoggedIn());
+
+if ($isAdmin) {
+    $statStmt = $pdo->query("
+        SELECT 
+            SUM(CASE WHEN asset_type = 'video' THEN 1 ELSE 0 END) AS count_videos,
+            SUM(CASE WHEN asset_type = 'image' THEN 1 ELSE 0 END) AS count_images,
+            SUM(CASE WHEN asset_type IN ('document', 'archive') THEN 1 ELSE 0 END) AS count_docs_zips
+        FROM assets
+    ");
+} else {
+    $statStmt = $pdo->query("
+        SELECT 
+            SUM(CASE WHEN asset_type = 'video' THEN 1 ELSE 0 END) AS count_videos,
+            SUM(CASE WHEN asset_type = 'image' THEN 1 ELSE 0 END) AS count_images,
+            SUM(CASE WHEN asset_type IN ('document', 'archive') THEN 1 ELSE 0 END) AS count_docs_zips
+        FROM assets
+        WHERE visibility = 2
+    ");
+}
 $sidebarStats = $statStmt->fetch() ?: [
     'count_videos' => 0, 'count_images' => 0, 'count_docs_zips' => 0
 ];
+
+$plCountStmt = $pdo->query($isAdmin ? "SELECT COUNT(*) FROM playlists" : "SELECT COUNT(*) FROM playlists WHERE visibility = 2");
+$countPlaylists = (int)$plCountStmt->fetchColumn();
 
 $currentType = $_GET['type'] ?? '';
 ?>
@@ -30,6 +45,13 @@ $currentType = $_GET['type'] ?? '';
         <i class="bi bi-play-btn-fill text-danger"></i>
         <span class="nav-text">Videos</span>
         <span class="badge bg-secondary ms-auto small nav-text"><?= (int)$sidebarStats['count_videos'] ?></span>
+      </a>
+
+      <!-- PLAYLISTS -->
+      <a class="nav-link <?= ($currentType === 'playlist') ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=playlist">
+        <i class="bi bi-collection-play-fill text-danger"></i>
+        <span class="nav-text">Playlists</span>
+        <span class="badge bg-secondary ms-auto small nav-text"><?= (int)$countPlaylists ?></span>
       </a>
 
       <!-- IMAGES -->

@@ -76,6 +76,36 @@ $assetsQuery = $pdo->prepare("
 $assetsQuery->execute($params);
 $assetsList = $assetsQuery->fetchAll();
 
+// Fetch all playlists and their items
+$playlistsStmt = $pdo->query("
+    SELECT p.*, COUNT(pi.id) AS video_count,
+           (SELECT a.thumbnail_path FROM playlist_items pi2 
+            JOIN assets a ON pi2.asset_id = a.id 
+            WHERE pi2.playlist_id = p.id 
+            ORDER BY pi2.position ASC, pi2.created_at ASC LIMIT 1) AS first_thumbnail,
+           (SELECT pi3.asset_id FROM playlist_items pi3 
+            WHERE pi3.playlist_id = p.id 
+            ORDER BY pi3.position ASC, pi3.created_at ASC LIMIT 1) AS first_asset_id
+    FROM playlists p
+    LEFT JOIN playlist_items pi ON p.id = pi.playlist_id
+    GROUP BY p.id
+    ORDER BY p.updated_at DESC
+");
+$allPlaylists = $playlistsStmt ? $playlistsStmt->fetchAll() : [];
+
+$playlistDetails = [];
+if (!empty($allPlaylists)) {
+    $itemQuery = $pdo->query("
+        SELECT pi.*, a.title AS video_title, a.duration_seconds, a.thumbnail_path 
+        FROM playlist_items pi 
+        JOIN assets a ON pi.asset_id = a.id 
+        ORDER BY pi.playlist_id, pi.position ASC, pi.created_at ASC
+    ");
+    while ($it = $itemQuery->fetch()) {
+        $playlistDetails[$it['playlist_id']][] = $it;
+    }
+}
+
 $pageTitle = "Creator Studio";
 include __DIR__ . '/includes/header.php';
 ?>
@@ -94,14 +124,14 @@ include __DIR__ . '/includes/header.php';
 
     <!-- Studio Header Actions -->
     <div class="d-flex align-items-center gap-2 flex-wrap">
-      <a href="<?= $baseUrl ?>/settings.php" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-3 py-2 fw-semibold shadow-sm">
-        <i class="bi bi-shield-lock-fill text-danger"></i>
-        <span>Settings & Password</span>
-      </a>
       <button class="btn btn-danger d-flex align-items-center gap-2 px-3 py-2 fw-semibold shadow-sm" id="studioSyncBtn">
         <i class="bi bi-arrow-repeat"></i>
-        <span>Sync Filesystem / FTP Drops</span>
+        <span>Sync Filesystem</span>
       </button>
+      <a href="<?= $baseUrl ?>/settings.php#danger-zone" class="btn btn-outline-danger d-flex align-items-center gap-2 px-3 py-2 fw-semibold shadow-sm" title="Global Reset: purge database & empty assets">
+        <i class="bi bi-trash3"></i>
+        <span class="d-none d-sm-inline">Global Reset</span>
+      </a>
     </div>
   </div>
 
@@ -149,15 +179,21 @@ include __DIR__ . '/includes/header.php';
   <!-- Dual Upload & Sync Section -->
   <div class="card bg-white border-light-subtle shadow-sm mb-4">
     <div class="card-header border-bottom border-light-subtle bg-light">
-      <ul class="nav nav-tabs card-header-tabs border-0" id="uploadTabs" role="tablist">
-        <li class="nav-item" role="presentation">
+      <ul class="nav nav-tabs card-header-tabs border-0 flex-nowrap overflow-x-auto" id="uploadTabs" role="tablist" style="scrollbar-width: none;">
+        <li class="nav-item flex-shrink-0" role="presentation">
           <button class="nav-link active text-dark fw-semibold border-bottom-0" id="web-upload-tab" data-bs-toggle="tab" data-bs-target="#web-upload" type="button" role="tab">
             <i class="bi bi-cloud-arrow-up-fill text-danger me-1"></i> Web UI Uploader
           </button>
         </li>
-        <li class="nav-item" role="presentation">
+        <li class="nav-item flex-shrink-0" role="presentation">
           <button class="nav-link text-secondary fw-semibold border-0" id="ftp-sync-tab" data-bs-toggle="tab" data-bs-target="#ftp-sync" type="button" role="tab">
             <i class="bi bi-folder-symlink-fill text-success me-1"></i> Large File Drop & FTP Sync
+          </button>
+        </li>
+        <li class="nav-item flex-shrink-0" role="presentation">
+          <button class="nav-link text-secondary fw-semibold border-0" id="playlists-tab" data-bs-toggle="tab" data-bs-target="#playlists-panel" type="button" role="tab">
+            <i class="bi bi-collection-play-fill text-danger me-1"></i> Playlists Manager
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" id="playlistTabBadge"><?= count($allPlaylists) ?></span>
           </button>
         </li>
       </ul>
@@ -203,6 +239,22 @@ include __DIR__ . '/includes/header.php';
               <div class="col-12">
                 <label class="form-label text-secondary small fw-bold">Description & Timestamps (Optional)</label>
                 <textarea name="description" id="uploadDesc" class="form-control bg-light text-dark border-secondary-subtle" rows="2" placeholder="Asset description or chapters like 00:00 Intro, 01:30 Scene 1"></textarea>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label text-secondary small fw-bold">
+                  <i class="bi bi-c-circle me-1"></i>Copyright & License Info (Optional)
+                </label>
+                <input type="text" name="copyright_info" class="form-control bg-light text-dark border-secondary-subtle" placeholder="e.g. © 2026 Runit. All rights reserved.">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label text-secondary small fw-bold">Visibility</label>
+                <select name="visibility" class="form-select bg-light text-dark border-secondary-subtle">
+                  <option value="1" selected>🔗 Unlisted — anyone with link (Default)</option>
+                  <option value="2">🌍 Public — visible in feed</option>
+                  <option value="0">🔒 Private — admin only</option>
+                </select>
               </div>
 
               <div class="col-md-6">
@@ -278,6 +330,132 @@ include __DIR__ . '/includes/header.php';
           </div>
         </div>
 
+        <!-- TAB 3: PLAYLISTS MANAGER -->
+        <div class="tab-pane fade" id="playlists-panel" role="tabpanel">
+          <div class="row g-4">
+            <!-- Left: Create New Playlist -->
+            <div class="col-lg-4">
+              <div class="p-3 border border-light-subtle rounded-3 bg-light">
+                <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-2">
+                  <i class="bi bi-plus-circle-fill text-danger"></i>
+                  <span>Create New Playlist</span>
+                </h6>
+                <p class="text-secondary small mb-3">Group your videos into series or continuous watch queues.</p>
+
+                <form id="createPlaylistForm">
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">Playlist Title *</label>
+                    <input type="text" id="plTitleInput" class="form-control form-control-sm bg-white" placeholder="e.g. Motion Comic Series, Remix Vault" required>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">Description (Optional)</label>
+                    <textarea id="plDescInput" class="form-control form-control-sm bg-white" rows="2" placeholder="Brief description of this playlist"></textarea>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">Visibility</label>
+                    <select id="plVisInput" class="form-select form-select-sm bg-white">
+                      <option value="1" selected>🔗 Unlisted — anyone with link (Default)</option>
+                      <option value="2">🌍 Public — visible in showcase feed</option>
+                      <option value="0">🔒 Private — admin only</option>
+                    </select>
+                  </div>
+
+                  <button type="submit" class="btn btn-danger btn-sm w-100 fw-semibold" id="createPlaylistBtn">
+                    <i class="bi bi-plus-lg me-1"></i> Create Playlist
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Right: Existing Playlists List -->
+            <div class="col-lg-8">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                  <i class="bi bi-collection-play text-danger"></i>
+                  <span>Active Playlists (<?= count($allPlaylists) ?>)</span>
+                </h6>
+              </div>
+
+              <?php if (empty($allPlaylists)): ?>
+                <div class="p-4 rounded-3 border border-light-subtle bg-light text-center text-secondary">
+                  <i class="bi bi-collection-play display-6 d-block mb-2 text-muted"></i>
+                  <p class="small mb-0">No playlists created yet. Use the form on the left to create your first playlist.</p>
+                </div>
+              <?php else: ?>
+                <div class="d-flex flex-column gap-3" id="playlistsContainer">
+                  <?php foreach ($allPlaylists as $pl): 
+                    $plItems = $playlistDetails[$pl['id']] ?? [];
+                    $vCount = count($plItems);
+                    $firstAid = $pl['first_asset_id'];
+                    $playUrl = $firstAid ? "{$baseUrl}/watch.php?v={$firstAid}&list={$pl['id']}" : "#";
+                    $visInfo = getVisibilityLabel((int)$pl['visibility']);
+                  ?>
+                    <div class="card border-light-subtle shadow-sm bg-white overflow-hidden playlist-card-item" data-playlist-id="<?= $pl['id'] ?>">
+                      <div class="card-header bg-white py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom border-light-subtle">
+                        <div class="d-flex align-items-center gap-2 min-w-0">
+                          <i class="bi bi-collection-play-fill text-danger fs-5"></i>
+                          <div>
+                            <span class="fw-bold text-dark"><?= h($pl['title']) ?></span>
+                            <span class="badge <?= $visInfo['badge'] ?> border ms-1 small"><?= $visInfo['label'] ?></span>
+                          </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                          <?php if ($vCount > 0): ?>
+                            <a href="<?= $playUrl ?>" target="_blank" class="btn btn-sm btn-outline-danger px-2 py-1 small">
+                              <i class="bi bi-play-fill me-1"></i>Play All (<?= $vCount ?>)
+                            </a>
+                          <?php endif; ?>
+                          <button class="btn btn-sm btn-outline-secondary px-2 py-1 small" data-bs-toggle="collapse" data-bs-target="#plCollapse-<?= $pl['id'] ?>">
+                            <i class="bi bi-list-nested me-1"></i>Videos (<?= $vCount ?>)
+                          </button>
+                          <button class="btn btn-sm btn-outline-danger px-2 py-1 small delete-playlist-btn" data-id="<?= $pl['id'] ?>" data-title="<?= h($pl['title']) ?>" title="Delete Playlist">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Collapsible Video List -->
+                      <div class="collapse <?= $vCount > 0 ? '' : 'show' ?>" id="plCollapse-<?= $pl['id'] ?>">
+                        <div class="card-body p-3 bg-light">
+                          <?php if (empty($plItems)): ?>
+                            <div class="text-secondary small text-center py-2">
+                              No videos in this playlist yet. Add videos from the <strong>Manage Assets</strong> table below by clicking the <i class="bi bi-collection-play text-danger"></i> icon!
+                            </div>
+                          <?php else: ?>
+                            <div class="d-flex flex-column gap-2">
+                              <?php foreach ($plItems as $pIdx => $pItem): 
+                                $pThumb = $pItem['thumbnail_path'] ? "{$baseUrl}/" . ltrim($pItem['thumbnail_path'], '/') : "{$baseUrl}/assets/thumbnails/thumb-flowcv.png";
+                              ?>
+                                <div class="d-flex align-items-center justify-content-between gap-2 p-2 bg-white rounded border border-light-subtle">
+                                  <div class="d-flex align-items-center gap-2 min-w-0">
+                                    <span class="text-secondary small fw-bold font-monospace" style="width: 20px;"><?= $pIdx + 1 ?></span>
+                                    <div style="width: 50px; height: 30px; border-radius: 4px; overflow: hidden; background: #000; flex-shrink: 0;">
+                                      <img src="<?= $pThumb ?>" alt="" style="width: 100%; height: 100%; object-fit: cover;">
+                                    </div>
+                                    <span class="small fw-semibold text-dark text-truncate"><?= h($pItem['video_title']) ?></span>
+                                  </div>
+                                  <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                    <span class="small text-secondary font-monospace" style="font-size: 0.75rem;"><?= formatDuration((int)$pItem['duration_seconds']) ?></span>
+                                    <button class="btn btn-sm btn-link text-danger p-0 remove-from-playlist-btn" data-playlist-id="<?= $pl['id'] ?>" data-asset-id="<?= $pItem['asset_id'] ?>" title="Remove from playlist">
+                                      <i class="bi bi-x-circle fs-6"></i>
+                                    </button>
+                                  </div>
+                                </div>
+                              <?php endforeach; ?>
+                            </div>
+                          <?php endif; ?>
+                        </div>
+                      </div>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -323,7 +501,116 @@ include __DIR__ . '/includes/header.php';
       </form>
     </div>
 
-    <div class="table-responsive">
+    <!-- Mobile Card View (< 768px) -->
+    <div class="d-md-none p-3 d-flex flex-column gap-3 bg-light">
+      <?php if (empty($assetsList)): ?>
+        <div class="text-center py-4 text-secondary bg-white rounded-3 border p-3">
+          No assets found matching the criteria. Use the uploader or run sync above.
+        </div>
+      <?php else: ?>
+        <?php foreach ($assetsList as $asset): 
+          $isVideo = ($asset['asset_type'] === 'video');
+          $isImage = ($asset['asset_type'] === 'image');
+          $rawUrl  = "{$baseUrl}/" . ltrim($asset['file_path'], '/');
+          $watchUrl = "{$baseUrl}/watch.php?v={$asset['id']}";
+          $streamUrl = "{$baseUrl}/stream.php?v={$asset['id']}";
+          $thumb = $asset['thumbnail_path'] ? "{$baseUrl}/" . ltrim($asset['thumbnail_path'], '/') : ($isImage ? $rawUrl : '');
+          if (!$thumb) {
+            $thumb = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='45' viewBox='0 0 80 45'><rect width='80' height='45' fill='%23f0f0f0'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23666' font-size='10'>" . strtoupper($asset['extension']) . "</text></svg>";
+          }
+
+          $embedTag = $isVideo 
+            ? "<iframe src=\"{$baseUrl}/embed.php?v={$asset['id']}\" width=\"100%\" height=\"450\" frameborder=\"0\" allowfullscreen></iframe>"
+            : ($isImage ? "<img src=\"{$rawUrl}\" alt=\"" . h($asset['title']) . "\" />" : "<a href=\"{$rawUrl}\" download>Download " . h($asset['title']) . "</a>");
+          
+          $shareData = json_encode([
+            'id'          => $asset['id'],
+            'title'       => $asset['title'],
+            'watchUrl'    => $watchUrl,
+            'cdnUrl'      => $isVideo ? $streamUrl : $rawUrl,
+            'embedTag'    => $embedTag,
+            'markdownTag' => "![" . h($asset['title']) . "]({$rawUrl})"
+          ]);
+
+          $tStmt = $pdo->prepare("SELECT tag FROM asset_tags WHERE asset_id = :id");
+          $tStmt->execute([':id' => $asset['id']]);
+          $assetTags = implode(', ', $tStmt->fetchAll(PDO::FETCH_COLUMN));
+
+          $editData = json_encode([
+            'id'             => $asset['id'],
+            'title'          => $asset['title'],
+            'description'    => $asset['description'],
+            'copyright_info' => $asset['copyright_info'] ?? '',
+            'category_id'    => $asset['category_id'],
+            'project'        => $asset['project'],
+            'duration'       => $asset['duration_seconds'],
+            'visibility'     => (int)($asset['visibility'] ?? ($asset['is_public'] ? 2 : 0)),
+            'tags'           => $assetTags,
+          ]);
+
+          $visVal = (int)($asset['visibility'] ?? ($asset['is_public'] >= 1 ? 2 : 0));
+          $visInfo = getVisibilityLabel($visVal);
+        ?>
+          <div class="card bg-white border-light-subtle shadow-sm rounded-3 overflow-hidden">
+            <div class="card-body p-3">
+              <div class="d-flex gap-3 mb-2">
+                <a href="<?= $watchUrl ?>" target="_blank" style="width: 80px; aspect-ratio: 16/9; border-radius: 6px; overflow: hidden; background: #000; flex-shrink: 0; display: block;">
+                  <img src="<?= $thumb ?>" alt="" style="width: 100%; height: 100%; object-fit: cover;">
+                </a>
+                <div class="min-w-0 flex-grow-1">
+                  <div class="fw-bold text-dark text-truncate mb-1" style="font-size: 0.95rem;"><?= h($asset['title']) ?></div>
+                  <div class="small text-secondary font-monospace text-truncate" style="font-size: 0.75rem;">ID: <?= $asset['id'] ?></div>
+                  <div class="small text-muted text-truncate" style="font-size: 0.75rem;"><?= h($asset['file_name']) ?></div>
+                </div>
+              </div>
+
+              <!-- Badges Row -->
+              <div class="d-flex flex-wrap gap-1 align-items-center mb-3">
+                <span class="badge bg-light text-dark border small"><?= h($asset['category_name'] ?: 'General') ?></span>
+                <?php if (!empty($asset['project'])): ?>
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle small"><?= h($asset['project']) ?></span>
+                <?php endif; ?>
+                <span class="badge <?= $visInfo['badge'] ?> border small">
+                  <i class="bi <?= $visInfo['icon'] ?> me-1"></i><?= $visInfo['label'] ?>
+                </span>
+                <span class="badge bg-secondary-subtle text-dark border small font-monospace"><?= formatBytes((float)$asset['file_size']) ?></span>
+                <span class="badge bg-light text-secondary border small"><i class="bi bi-eye me-1"></i><?= number_format((int)$asset['views_count']) ?></span>
+                <span class="text-secondary small ms-auto font-monospace" style="font-size: 0.72rem;"><?= timeAgo($asset['created_at']) ?></span>
+              </div>
+
+              <!-- Action Buttons Row -->
+              <div class="d-flex align-items-center justify-content-between pt-2 border-top border-light-subtle">
+                <div class="btn-group btn-group-sm">
+                  <?php if ($isVideo): ?>
+                    <button class="btn btn-outline-danger add-to-playlist-btn px-2" data-id="<?= $asset['id'] ?>" data-title="<?= h($asset['title']) ?>" title="Add to Playlist">
+                      <i class="bi bi-collection-play"></i>
+                    </button>
+                  <?php endif; ?>
+                  <button class="btn btn-outline-warning edit-asset-btn px-2" data-asset='<?= htmlspecialchars($editData, ENT_QUOTES) ?>' title="Edit">
+                    <i class="bi bi-pencil-square"></i> Edit
+                  </button>
+                  <button class="btn btn-outline-info px-2" data-share-asset='<?= htmlspecialchars($shareData, ENT_QUOTES) ?>' title="Share">
+                    <i class="bi bi-share"></i> Share
+                  </button>
+                </div>
+
+                <div class="d-flex gap-1">
+                  <a href="<?= $watchUrl ?>" target="_blank" class="btn btn-sm btn-outline-secondary px-2" title="Watch">
+                    <i class="bi bi-box-arrow-up-right"></i>
+                  </a>
+                  <button class="btn btn-sm btn-outline-danger delete-asset-btn px-2" data-id="<?= $asset['id'] ?>" data-title="<?= h($asset['title']) ?>" title="Delete">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </div>
+
+    <!-- Desktop Table (>= 768px) -->
+    <div class="d-none d-md-block table-responsive">
       <table class="table table-hover mb-0 align-middle">
         <thead class="table-light">
           <tr class="text-secondary small text-uppercase">
@@ -333,6 +620,7 @@ include __DIR__ . '/includes/header.php';
             <th scope="col">Project</th>
             <th scope="col">Size</th>
             <th scope="col">Source</th>
+            <th scope="col">Visibility</th>
             <th scope="col">Views</th>
             <th scope="col">Date</th>
             <th scope="col" class="text-end">Actions</th>
@@ -376,14 +664,15 @@ include __DIR__ . '/includes/header.php';
               $assetTags = implode(', ', $tStmt->fetchAll(PDO::FETCH_COLUMN));
 
               $editData = json_encode([
-                'id'          => $asset['id'],
-                'title'       => $asset['title'],
-                'description' => $asset['description'],
-                'category_id' => $asset['category_id'],
-                'project'     => $asset['project'],
-                'duration'    => $asset['duration_seconds'],
-                'is_public'   => $asset['is_public'],
-                'tags'        => $assetTags,
+                'id'             => $asset['id'],
+                'title'          => $asset['title'],
+                'description'    => $asset['description'],
+                'copyright_info' => $asset['copyright_info'] ?? '',
+                'category_id'    => $asset['category_id'],
+                'project'        => $asset['project'],
+                'duration'       => $asset['duration_seconds'],
+                'visibility'     => (int)($asset['visibility'] ?? ($asset['is_public'] ? 2 : 0)),
+                'tags'           => $assetTags,
               ]);
             ?>
               <tr>
@@ -412,10 +701,25 @@ include __DIR__ . '/includes/header.php';
                     <span class="badge bg-success-subtle text-success"><i class="bi bi-folder-symlink"></i> FTP Sync</span>
                   <?php endif; ?>
                 </td>
+                <td>
+                  <?php 
+                  $visVal = (int)($asset['visibility'] ?? ($asset['is_public'] >= 1 ? 2 : 0));
+                  $visInfo = getVisibilityLabel($visVal);
+                  ?>
+                  <span class="badge <?= $visInfo['badge'] ?> border" title="<?= $visInfo['label'] ?>">
+                    <i class="bi <?= $visInfo['icon'] ?>"></i>
+                    <span class="d-none d-xl-inline ms-1"><?= $visInfo['label'] ?></span>
+                  </span>
+                </td>
                 <td><span class="small"><?= number_format((int)$asset['views_count']) ?></span></td>
                 <td><span class="small text-secondary"><?= timeAgo($asset['created_at']) ?></span></td>
                 <td class="text-end">
                   <div class="btn-group btn-group-sm">
+                    <?php if ($isVideo): ?>
+                      <button class="btn btn-outline-danger add-to-playlist-btn" data-id="<?= $asset['id'] ?>" data-title="<?= h($asset['title']) ?>" title="Add to Playlist">
+                        <i class="bi bi-collection-play"></i>
+                      </button>
+                    <?php endif; ?>
                     <button class="btn btn-outline-warning edit-asset-btn" data-asset='<?= htmlspecialchars($editData, ENT_QUOTES) ?>' title="Edit Metadata">
                       <i class="bi bi-pencil-square"></i>
                     </button>
@@ -478,9 +782,10 @@ include __DIR__ . '/includes/header.php';
 
             <div class="col-md-4">
               <label class="form-label text-secondary small fw-bold">Visibility</label>
-              <select name="is_public" id="editVisibility" class="form-select bg-light text-dark border-secondary-subtle">
-                <option value="1">Public (Visible in Showcase Feed)</option>
-                <option value="0">Unlisted (Direct Link / Embed Only)</option>
+              <select name="visibility" id="editVisibility" class="form-select bg-light text-dark border-secondary-subtle">
+                <option value="2">🌍 Public &mdash; visible in feed</option>
+                <option value="1">🔗 Unlisted &mdash; anyone with link</option>
+                <option value="0">🔒 Private &mdash; admin only</option>
               </select>
             </div>
           </div>
@@ -488,6 +793,14 @@ include __DIR__ . '/includes/header.php';
           <div class="mb-3">
             <label class="form-label text-secondary small fw-bold">Description (Timestamps like 01:23 will become clickable chapters)</label>
             <textarea name="description" id="editDesc" class="form-control bg-light text-dark border-secondary-subtle" rows="4"></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-bold">
+              <i class="bi bi-c-circle me-1"></i>Copyright & License Info
+            </label>
+            <textarea name="copyright_info" id="editCopyrightInfo" class="form-control bg-light text-dark border-secondary-subtle" rows="2" placeholder="e.g. © 2026 Runit. All rights reserved. / CC BY 4.0"></textarea>
+            <div class="form-text text-secondary" style="font-size: 0.75rem;">Shown below the description on the watch page.</div>
           </div>
 
           <div class="row g-3 mb-3">
@@ -533,6 +846,48 @@ include __DIR__ . '/includes/header.php';
       <div class="modal-footer border-top border-light-subtle">
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-danger btn-sm" id="confirmDeleteBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD TO PLAYLIST MODAL -->
+<div class="modal fade" id="addToPlaylistModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-white text-dark border-light-subtle shadow">
+      <div class="modal-header border-bottom border-light-subtle">
+        <h5 class="modal-title d-flex align-items-center gap-2">
+          <i class="bi bi-collection-play-fill text-danger"></i>
+          <span>Add Video to Playlist</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="addPlaylistAssetId">
+        <p class="small text-secondary mb-3">Adding video: <strong id="addPlaylistAssetTitle" class="text-dark"></strong></p>
+        
+        <?php if (empty($allPlaylists)): ?>
+          <div class="alert alert-warning small mb-0">
+            No playlists found. Please create a playlist first in the <strong>Playlists Manager</strong> tab above.
+          </div>
+        <?php else: ?>
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-bold">Select Target Playlist</label>
+            <select class="form-select bg-light text-dark border-secondary-subtle" id="targetPlaylistSelect">
+              <?php foreach ($allPlaylists as $pl): ?>
+                <option value="<?= $pl['id'] ?>"><?= h($pl['title']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+        <?php endif; ?>
+      </div>
+      <div class="modal-footer border-top border-light-subtle">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <?php if (!empty($allPlaylists)): ?>
+          <button type="button" class="btn btn-danger btn-sm" id="confirmAddToPlaylistBtn">
+            <i class="bi bi-plus-circle me-1"></i> Add to Playlist
+          </button>
+        <?php endif; ?>
       </div>
     </div>
   </div>
@@ -674,9 +1029,10 @@ document.querySelectorAll('.edit-asset-btn').forEach(btn => {
     document.getElementById('editAssetId').value = asset.id;
     document.getElementById('editTitle').value = asset.title;
     document.getElementById('editDesc').value = asset.description || '';
+    document.getElementById('editCopyrightInfo').value = asset.copyright_info || '';
     document.getElementById('editCategory').value = asset.category_id || '';
     document.getElementById('editProject').value = asset.project || '';
-    document.getElementById('editVisibility').value = asset.is_public;
+    document.getElementById('editVisibility').value = String(asset.visibility ?? 2);
     document.getElementById('editTags').value = asset.tags || '';
 
     const modal = new bootstrap.Modal(document.getElementById('editAssetModal'));
@@ -734,6 +1090,120 @@ document.getElementById('confirmDeleteBtn')?.addEventListener('click', () => {
       } else {
         showToast(data.error || 'Delete failed', false);
       }
+    });
+});
+
+// Playlists Manager Handlers
+document.getElementById('createPlaylistForm')?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const btn = document.getElementById('createPlaylistSubmitBtn');
+  btn.disabled = true;
+
+  fetch('api/playlists.php?action=create', { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      if (data.success) {
+        showToast('Playlist created successfully!');
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        showToast(data.error || 'Failed to create playlist', false);
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      showToast('Error: ' + err.message, false);
+    });
+});
+
+document.querySelectorAll('.delete-playlist-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const id = btn.getAttribute('data-id');
+    const title = btn.getAttribute('data-title');
+    if (!confirm(`Are you sure you want to delete playlist "${title}"? (Videos inside will not be deleted)`)) return;
+
+    const fd = new FormData();
+    fd.append('id', id);
+
+    fetch('api/playlists.php?action=delete', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          showToast('Playlist deleted');
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          showToast(data.error || 'Failed to delete playlist', false);
+        }
+      });
+  });
+});
+
+document.querySelectorAll('.remove-from-playlist-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const playlistId = btn.getAttribute('data-playlist-id');
+    const assetId = btn.getAttribute('data-asset-id');
+    if (!confirm('Remove this video from the playlist?')) return;
+
+    const fd = new FormData();
+    fd.append('playlist_id', playlistId);
+    fd.append('asset_id', assetId);
+
+    fetch('api/playlists.php?action=remove_item', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          showToast('Video removed from playlist');
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          showToast(data.error || 'Failed to remove', false);
+        }
+      });
+  });
+});
+
+let addToPlaylistModalInstance = null;
+document.querySelectorAll('.add-to-playlist-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.getAttribute('data-id');
+    const title = btn.getAttribute('data-title');
+    document.getElementById('addPlaylistAssetId').value = id;
+    document.getElementById('addPlaylistAssetTitle').textContent = title;
+    const modalEl = document.getElementById('addToPlaylistModal');
+    addToPlaylistModalInstance = new bootstrap.Modal(modalEl);
+    addToPlaylistModalInstance.show();
+  });
+});
+
+document.getElementById('confirmAddToPlaylistBtn')?.addEventListener('click', () => {
+  const assetId = document.getElementById('addPlaylistAssetId').value;
+  const playlistId = document.getElementById('targetPlaylistSelect')?.value;
+  if (!assetId || !playlistId) return;
+
+  const fd = new FormData();
+  fd.append('playlist_id', playlistId);
+  fd.append('asset_id', assetId);
+
+  const btn = document.getElementById('confirmAddToPlaylistBtn');
+  btn.disabled = true;
+
+  fetch('api/playlists.php?action=add_item', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      if (data.success) {
+        showToast('Video added to playlist!');
+        if (addToPlaylistModalInstance) addToPlaylistModalInstance.hide();
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        showToast(data.error || 'Failed to add video', false);
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      showToast('Error: ' + err.message, false);
     });
 });
 </script>

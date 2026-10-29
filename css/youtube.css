@@ -176,6 +176,20 @@ body.sidebar-collapsed .yt-main-content {
   margin-left: var(--sidebar-mini-width);
 }
 
+/* Pre-collapse: applied by inline script before body renders to prevent layout flicker */
+html.sidebar-pre-collapsed body .yt-sidebar {
+  width: var(--sidebar-mini-width);
+  padding: 0.5rem 0.25rem;
+}
+html.sidebar-pre-collapsed body .yt-sidebar .nav-link span.nav-text,
+html.sidebar-pre-collapsed body .yt-sidebar .sidebar-heading,
+html.sidebar-pre-collapsed body .yt-sidebar .sidebar-footer {
+  display: none;
+}
+html.sidebar-pre-collapsed body .yt-main-content {
+  margin-left: var(--sidebar-mini-width);
+}
+
 /* Sidebar Nav links */
 .yt-sidebar .nav-link {
   color: var(--yt-text);
@@ -823,6 +837,26 @@ body.sidebar-collapsed .yt-main-content {
   animation: fadeIn 0.25s ease;
 }
 
+/* Unsupported Legacy Format Overlay (for WMV, FLV, MPG, AVI or decode errors) */
+.yt-unsupported-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(10, 10, 10, 0.92);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 45;
+  color: #fff;
+  padding: 1.5rem;
+  text-align: center;
+  animation: fadeIn 0.25s ease;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -1149,6 +1183,255 @@ body.sidebar-collapsed .yt-main-content {
 .yt-site-footer a:hover {
   color: #0f0f0f !important;
 }
+
+/* ==========================================================================
+   COMPREHENSIVE MOBILE RESPONSIVENESS ENHANCEMENTS
+   ========================================================================== */
+
+/* 1. Mobile Sidebar Backdrop Overlay */
+.yt-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 1025; /* right beneath sidebar z-index: 1030 */
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+body.sidebar-mobile-open .yt-sidebar-backdrop {
+  display: block;
+  opacity: 1;
+}
+
+/* 2. Horizontally Scrollable Action Pills on Mobile */
+.yt-action-pills-scroll {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  max-width: 100%;
+}
+
+.yt-action-pills-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* 3. Touch Friendly Bookmark Controls */
+@media (hover: none), (max-width: 991.98px) {
+  .yt-quick-watch-later {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+}
+
+/* 4. Medium / Tablet Devices (max-width: 991.98px) */
+@media (max-width: 991.98px) {
+  .yt-sidebar {
+    box-shadow: 2px 0 16px rgba(0, 0, 0, 0.15);
+  }
+  .yt-main-content {
+    margin-left: 0 !important;
+    padding: 1rem 0.75rem;
+  }
+}
+
+/* 5. Mobile Phones (max-width: 767.98px) */
+@media (max-width: 767.98px) {
+  /* Flush edge-to-edge player on phone screens like YouTube App */
+  .watch-container {
+    margin: 0 -0.75rem;
+  }
+  .yt-player-container {
+    border-radius: 0 !important;
+    box-shadow: none;
+  }
+  .watch-container .mt-3,
+  .watch-container .col-lg-4,
+  .watch-container .yt-description-box {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Player controls: hide desktop-only controls */
+  .yt-volume-wrapper {
+    display: none !important;
+  }
+  .yt-theater-btn {
+    display: none !important;
+  }
+  .yt-time-display {
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
+  }
+  .yt-controls-row {
+    padding: 0 0.5rem 0.25rem 0.5rem;
+  }
+  .yt-ctrl-btn {
+    padding: 0.3rem 0.45rem;
+    font-size: 1.15rem;
+  }
+  .yt-seek-btn {
+    font-size: 1.15rem;
+  }
+  .yt-seek-text {
+    font-size: 0.55rem;
+  }
+
+  /* Up Next videos on mobile: clean compact horizontal item */
+  .yt-upnext-card {
+    gap: 0.65rem;
+  }
+  .yt-upnext-thumb {
+    width: 130px;
+    height: 74px;
+    flex-shrink: 0;
+  }
+  .yt-upnext-title {
+    font-size: 0.85rem;
+    line-height: 1.25;
+  }
+  .yt-upnext-meta {
+    font-size: 0.72rem;
+  }
+
+  /* Studio metrics on mobile */
+  .row-cols-2 > .col {
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+  }
+}
+
+/* 6. Extra Small Screens (max-width: 575.98px) */
+@media (max-width: 575.98px) {
+  /* Header branding & search on narrow screens */
+  .yt-header {
+    padding: 0.45rem 0.5rem;
+    gap: 0.35rem;
+  }
+  .yt-brand .brand-text span {
+    display: none; /* Hide 'SHOWCASE' on small phones to save space */
+  }
+  .yt-brand .brand-text {
+    font-size: 1.05rem;
+  }
+  .yt-brand img {
+    height: 26px;
+  }
+  .yt-search-container {
+    max-width: none;
+    margin: 0 0.25rem !important;
+  }
+  .yt-search-input {
+    font-size: 0.85rem;
+    padding-left: 0.75rem;
+  }
+  .yt-search-btn {
+    padding: 0.35rem 0.75rem !important;
+  }
+
+  /* Player controls further streamlined */
+  .yt-pip-btn {
+    display: none !important;
+  }
+  .yt-speed-select {
+    padding: 0.2rem 0.4rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  /* Category switcher chips touch swipe */
+  .yt-chip-bar {
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    padding-right: 1.5rem;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+  .yt-chip {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+
+  /* Video title typography on small screens */
+  .yt-card-title {
+    font-size: 0.9rem;
+    line-height: 1.35;
+  }
+  .h4 {
+    font-size: 1.15rem;
+  }
+
+  /* Extra mobile viewport spacing */
+  .yt-main-content {
+    padding: 0.75rem !important;
+    padding-bottom: 5rem !important;
+  }
+}
+
+/* ==========================================================================
+   SCROLL TO TOP FLOATING BUTTON
+   ========================================================================== */
+#scrollToTopBtn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50% !important;
+  background-color: var(--yt-red, #cc0000);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(204, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  cursor: pointer;
+  z-index: 1050;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(18px) scale(0.85);
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0.25s, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#scrollToTopBtn.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+#scrollToTopBtn:hover {
+  background-color: #b30000;
+  color: #fff;
+  transform: translateY(-3px) scale(1.08);
+  box-shadow: 0 6px 20px rgba(204, 0, 0, 0.55);
+}
+
+#scrollToTopBtn:active {
+  transform: translateY(0) scale(0.92);
+}
+
+@media (max-width: 767.98px) {
+  #scrollToTopBtn {
+    bottom: 68px; /* Elevated above mobile footer links */
+    right: 16px;
+    width: 42px;
+    height: 42px;
+    font-size: 1.15rem;
+  }
+}
+
 
 
 

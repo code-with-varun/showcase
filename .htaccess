@@ -1,0 +1,71 @@
+# ============================================================
+# Runit Showcase & Media CDN - Live Server Configuration (.htaccess)
+# Optimized for Hostinger / Apache 2.4+ / PHP 8.x
+# ============================================================
+
+# 1. Default Directory Index
+DirectoryIndex index.php index.html
+
+# 2. UTF-8 Character Encoding
+AddDefaultCharset UTF-8
+
+# 3. PHP Settings for Large Media Uploads
+<IfModule mod_php.c>
+    php_value upload_max_filesize 1024M
+    php_value post_max_size 1024M
+    php_value memory_limit 512M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>
+
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 1024M
+    php_value post_max_size 1024M
+    php_value memory_limit 512M
+</IfModule>
+
+# 4. MIME Types for Video, Audio, and Image Streaming
+<IfModule mod_mime.c>
+    AddType video/mp4 .mp4 .m4v
+    AddType video/webm .webm
+    AddType video/quicktime .mov
+    AddType video/x-matroska .mkv
+    AddType video/x-msvideo .avi
+    AddType video/x-ms-wmv .wmv
+    AddType video/x-flv .flv
+    AddType video/mpeg .mpg .mpeg
+    AddType image/webp .webp
+    AddType image/avif .avif
+    AddType image/svg+xml .svg .svgz
+</IfModule>
+
+# 5. Media Caching & Partial-Content HTTP 206 Byte Ranges
+<IfModule mod_headers.c>
+    # Enable byte ranges for media scrubbing
+    Header set Accept-Ranges "bytes"
+
+    # Cache static assets
+    <FilesMatch "\.(css|js|png|jpg|jpeg|webp|svg|gif|ico|woff|woff2)$">
+        Header set Cache-Control "max-age=2592000, public"
+    </FilesMatch>
+
+    # Disable MIME type sniffing
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# 6. Protect Sensitive Files & Directories
+<FilesMatch "(^\.git|^\.env|composer\.(json|lock)|package(-lock)?\.json|\.sql$)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 7. Disable Directory Listing
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>
+

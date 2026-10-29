@@ -2,6 +2,7 @@
 /**
  * API: Update Asset Metadata
  * Edits details for assets (whether uploaded via Web UI or synced via FTP)
+ * Supports 3-state visibility: 0=private, 1=unlisted, 2=public
  */
 
 header('Content-Type: application/json');
@@ -28,12 +29,17 @@ if (!$asset) {
     exit;
 }
 
-$title = !empty($_POST['title']) ? trim($_POST['title']) : $asset['title'];
-$desc  = isset($_POST['description']) ? trim($_POST['description']) : $asset['description'];
-$categoryId = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : $asset['category_id'];
-$project = isset($_POST['project']) ? trim($_POST['project']) : ($asset['project'] ?? null);
-$isPublic = isset($_POST['is_public']) ? (int)$_POST['is_public'] : $asset['is_public'];
-$duration = isset($_POST['duration_seconds']) ? (int)$_POST['duration_seconds'] : $asset['duration_seconds'];
+$title         = !empty($_POST['title']) ? trim($_POST['title']) : $asset['title'];
+$desc          = isset($_POST['description']) ? trim($_POST['description']) : $asset['description'];
+$copyrightInfo = isset($_POST['copyright_info']) ? trim($_POST['copyright_info']) : ($asset['copyright_info'] ?? '');
+$categoryId    = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : $asset['category_id'];
+$project       = isset($_POST['project']) ? trim($_POST['project']) : ($asset['project'] ?? null);
+$duration      = isset($_POST['duration_seconds']) ? (int)$_POST['duration_seconds'] : $asset['duration_seconds'];
+
+// 3-state visibility: 0=private, 1=unlisted, 2=public
+$visibility = isset($_POST['visibility']) ? (int)$_POST['visibility'] : ($asset['visibility'] ?? 2);
+$visibility = max(0, min(2, $visibility)); // clamp 0-2
+$isPublic   = ($visibility >= 1) ? 1 : 0; // legacy compatibility
 
 $thumbPath = $asset['thumbnail_path'];
 if (!empty($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
@@ -49,20 +55,23 @@ if (!empty($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR
 // Update assets record
 $upStmt = $pdo->prepare("
     UPDATE assets 
-    SET title = :title, description = :desc, category_id = :cat, project = :proj,
-        thumbnail_path = :thumb, is_public = :pub, duration_seconds = :dur,
-        updated_at = NOW()
+    SET title = :title, description = :desc, copyright_info = :copyright,
+        category_id = :cat, project = :proj,
+        thumbnail_path = :thumb, visibility = :visibility, is_public = :pub,
+        duration_seconds = :dur, updated_at = NOW()
     WHERE id = :id
 ");
 $upStmt->execute([
-    ':title' => $title,
-    ':desc'  => $desc,
-    ':cat'   => $categoryId,
-    ':proj'  => ($project !== '' ? $project : null),
-    ':thumb' => $thumbPath,
-    ':pub'   => $isPublic,
-    ':dur'   => $duration,
-    ':id'    => $id
+    ':title'      => $title,
+    ':desc'       => $desc,
+    ':copyright'  => ($copyrightInfo !== '' ? $copyrightInfo : null),
+    ':cat'        => $categoryId,
+    ':proj'       => ($project !== '' ? $project : null),
+    ':thumb'      => $thumbPath,
+    ':visibility' => $visibility,
+    ':pub'        => $isPublic,
+    ':dur'        => $duration,
+    ':id'         => $id
 ]);
 
 // Update tags
@@ -106,8 +115,9 @@ echo json_encode([
     'success' => true,
     'message' => 'Asset updated successfully',
     'asset'   => [
-        'id'        => $id,
-        'title'     => $title,
-        'thumbnail' => $thumbPath ? getBaseUrl() . '/' . $thumbPath : null
+        'id'         => $id,
+        'title'      => $title,
+        'visibility' => $visibility,
+        'thumbnail'  => $thumbPath ? getBaseUrl() . '/' . $thumbPath : null
     ]
 ]);

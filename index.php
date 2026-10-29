@@ -13,9 +13,9 @@ require_once __DIR__ . '/config/auth.php';
 $pdo = getDB();
 $baseUrl = getBaseUrl();
 
-// Active category: 'video' (default), 'image', 'document'
+// Active category: 'video' (default), 'playlist', 'image', 'document'
 $activeType = $_GET['type'] ?? 'video';
-if ($activeType === 'all' || !in_array($activeType, ['video', 'image', 'document', 'archive', 'docs_zips'])) {
+if ($activeType === 'all' || !in_array($activeType, ['video', 'playlist', 'image', 'document', 'archive', 'docs_zips'])) {
     $activeType = 'video';
 }
 if ($activeType === 'docs_zips' || $activeType === 'archive') {
@@ -26,44 +26,77 @@ $searchQ = trim($_GET['q'] ?? '');
 $selectedProject = trim($_GET['project'] ?? '');
 
 // Category counts for the navigation switcher
+$isAdmin = (function_exists('isAdminLoggedIn') && isAdminLoggedIn());
+$visibilityClause = $isAdmin ? '1=1' : 'visibility = 2';
 $countsStmt = $pdo->query("
     SELECT 
         SUM(CASE WHEN asset_type = 'video' THEN 1 ELSE 0 END) AS count_videos,
         SUM(CASE WHEN asset_type = 'image' THEN 1 ELSE 0 END) AS count_images,
         SUM(CASE WHEN asset_type IN ('document', 'archive') THEN 1 ELSE 0 END) AS count_docs
-    FROM assets WHERE is_public = 1
+    FROM assets WHERE $visibilityClause
 ");
 $catCounts = $countsStmt->fetch() ?: ['count_videos' => 0, 'count_images' => 0, 'count_docs' => 0];
 
-// Query active category assets
-$where = ['a.is_public = 1'];
+// Playlist count
+$plCount = (int)$pdo->query($isAdmin ? "SELECT COUNT(*) FROM playlists" : "SELECT COUNT(*) FROM playlists WHERE visibility = 2")->fetchColumn();
+
+// Query active category assets or playlists
+$where = [$isAdmin ? '1=1' : 'a.visibility = 2'];
 $params = [];
+$playlistsList = [];
 
-if ($activeType === 'video') {
-    $where[] = "a.asset_type = 'video'";
-} elseif ($activeType === 'image') {
-    $where[] = "a.asset_type = 'image'";
+if ($activeType === 'playlist') {
+    $plWhere = $isAdmin ? '1=1' : 'p.visibility = 2';
+    if ($searchQ !== '') {
+        $plWhere .= ' AND (p.title LIKE :pq1 OR p.description LIKE :pq2)';
+        $params[':pq1'] = '%' . $searchQ . '%';
+        $params[':pq2'] = '%' . $searchQ . '%';
+    }
+    $plStmt = $pdo->prepare("
+        SELECT p.*, COUNT(pi.id) AS video_count,
+               (SELECT a.thumbnail_path FROM playlist_items pi2 
+                JOIN assets a ON pi2.asset_id = a.id 
+                WHERE pi2.playlist_id = p.id 
+                ORDER BY pi2.position ASC, pi2.created_at ASC LIMIT 1) AS first_thumbnail,
+               (SELECT pi3.asset_id FROM playlist_items pi3 
+                WHERE pi3.playlist_id = p.id 
+                ORDER BY pi3.position ASC, pi3.created_at ASC LIMIT 1) AS first_asset_id
+        FROM playlists p
+        LEFT JOIN playlist_items pi ON p.id = pi.playlist_id
+        WHERE $plWhere
+        GROUP BY p.id
+        ORDER BY p.updated_at DESC
+    ");
+    $plStmt->execute($params);
+    $playlistsList = $plStmt->fetchAll();
+    $assetsList = [];
 } else {
-    $where[] = "a.asset_type IN ('document', 'archive')";
+    if ($activeType === 'video') {
+        $where[] = "a.asset_type = 'video'";
+    } elseif ($activeType === 'image') {
+        $where[] = "a.asset_type = 'image'";
+    } else {
+        $where[] = "a.asset_type IN ('document', 'archive')";
+    }
+
+    if ($searchQ !== '') {
+        $where[] = '(a.title LIKE :sq1 OR a.file_name LIKE :sq2 OR a.description LIKE :sq3)';
+        $params[':sq1'] = '%' . $searchQ . '%';
+        $params[':sq2'] = '%' . $searchQ . '%';
+        $params[':sq3'] = '%' . $searchQ . '%';
+    }
+
+    $whereSql = implode(' AND ', $where);
+    $sql = "SELECT a.*, c.name AS category_name, c.slug AS category_slug 
+            FROM assets a 
+            LEFT JOIN categories c ON a.category_id = c.id 
+            WHERE $whereSql 
+            ORDER BY a.created_at DESC";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $assetsList = $stmt->fetchAll();
 }
-
-if ($searchQ !== '') {
-    $where[] = '(a.title LIKE :sq1 OR a.file_name LIKE :sq2 OR a.description LIKE :sq3)';
-    $params[':sq1'] = '%' . $searchQ . '%';
-    $params[':sq2'] = '%' . $searchQ . '%';
-    $params[':sq3'] = '%' . $searchQ . '%';
-}
-
-$whereSql = implode(' AND ', $where);
-$sql = "SELECT a.*, c.name AS category_name, c.slug AS category_slug 
-        FROM assets a 
-        LEFT JOIN categories c ON a.category_id = c.id 
-        WHERE $whereSql 
-        ORDER BY a.created_at DESC";
-
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$assetsList = $stmt->fetchAll();
 
 // If in Images view, group assets project-wise
 $imagesByProject = [];
@@ -83,6 +116,7 @@ if ($activeType === 'image') {
 
 $pageTitle = $searchQ ? "Search: {$searchQ}" : match($activeType) {
     'video'    => 'Videos',
+    'playlist' => 'Playlists',
     'image'    => 'Images & Artwork',
     'document' => 'Documents & Archives',
     default    => 'Videos'
@@ -93,11 +127,16 @@ include __DIR__ . '/includes/header.php';
 
 <div class="container-fluid px-0">
 
-  <!-- Category Navigation Switcher (Videos, Images, Documents) -->
+  <!-- Category Navigation Switcher (Videos, Playlists, Images, Documents) -->
   <div class="yt-chip-bar mb-4">
     <a href="<?= $baseUrl ?>/index.php?type=video<?= $searchQ ? '&q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'video') ? 'active' : '' ?>">
       <i class="bi bi-play-circle-fill text-danger me-1"></i> Videos
       <span class="badge bg-secondary ms-1"><?= (int)$catCounts['count_videos'] ?></span>
+    </a>
+
+    <a href="<?= $baseUrl ?>/index.php?type=playlist<?= $searchQ ? '&q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'playlist') ? 'active' : '' ?>">
+      <i class="bi bi-collection-play-fill text-danger me-1"></i> Playlists
+      <span class="badge bg-secondary ms-1"><?= (int)$plCount ?></span>
     </a>
 
     <a href="<?= $baseUrl ?>/index.php?type=image<?= $searchQ ? '&q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'image') ? 'active' : '' ?>">
@@ -197,17 +236,25 @@ include __DIR__ . '/includes/header.php';
               'markdownTag' => "![" . h($vid['title']) . "]({$streamUrl})"
             ]);
           ?>
+          <?php
+            $vExt = strtolower($vid['extension'] ?? 'mp4');
+            $canWebPreview = in_array($vExt, ['mp4', 'webm', 'm4v']);
+          ?>
             <div class="col video-card-col" data-video-id="<?= $vid['id'] ?>">
               <div class="yt-card">
                 <div class="yt-thumb-wrapper position-relative">
                   <a href="<?= $watchUrl ?>" class="d-block w-100 h-100 text-decoration-none">
                     <img src="<?= $thumbUrl ?>" alt="<?= h($vid['title']) ?>" loading="lazy">
-                    <!-- Hover silent video preview (10s snippet) -->
-                    <video class="hover-preview" src="<?= $streamUrl ?>&preview=1" muted playsinline preload="none"></video>
+                    <?php if ($canWebPreview): ?>
+                      <!-- Hover silent video preview (10s snippet) -->
+                      <video class="hover-preview" src="<?= $streamUrl ?>&preview=1" muted playsinline preload="none"></video>
+                      <span class="yt-type-badge bg-danger">MP4</span>
+                    <?php else: ?>
+                      <span class="yt-type-badge bg-secondary"><?= strtoupper($vExt) ?></span>
+                    <?php endif; ?>
                     <span class="yt-duration-badge">
                       <?= $vid['duration_seconds'] > 0 ? formatDuration((int)$vid['duration_seconds']) : formatBytes((float)$vid['file_size']) ?>
                     </span>
-                    <span class="yt-type-badge bg-danger">VIDEO</span>
                   </a>
 
                   <!-- 1-Click Quick Watch Later Bookmark -->
@@ -250,6 +297,80 @@ include __DIR__ . '/includes/header.php';
                           </ul>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+    </section>
+  <?php endif; ?>
+
+  <!-- ====================================================================== -->
+  <!-- 1.5 PLAYLISTS VIEW -->
+  <!-- ====================================================================== -->
+  <?php if ($activeType === 'playlist'): ?>
+    <section class="mb-5" id="playlistsSection">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h4 class="text-dark mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-collection-play-fill text-danger"></i>
+          <span>Playlists</span>
+          <span class="badge bg-danger text-white small"><?= count($playlistsList) ?></span>
+        </h4>
+        <?php if ($isAdmin): ?>
+          <a href="<?= $baseUrl ?>/studio.php" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+            <i class="bi bi-plus-circle me-1"></i> Manage in Studio
+          </a>
+        <?php endif; ?>
+      </div>
+
+      <?php if (empty($playlistsList)): ?>
+        <div class="p-5 rounded-3 border border-light-subtle bg-white text-center text-secondary shadow-sm">
+          <i class="bi bi-collection-play display-4 d-block mb-3 text-muted"></i>
+          <h5>No playlists created yet</h5>
+          <p class="small text-secondary mb-3">Group your videos into series or playlists for easy continuous playback.</p>
+          <?php if ($isAdmin): ?>
+            <a href="<?= $baseUrl ?>/studio.php" class="btn btn-danger btn-sm rounded-pill px-3">
+              <i class="bi bi-plus-lg me-1"></i> Create First Playlist in Studio
+            </a>
+          <?php endif; ?>
+        </div>
+      <?php else: ?>
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-3 g-lg-4">
+          <?php foreach ($playlistsList as $pl): 
+            $firstAid = $pl['first_asset_id'];
+            $playAllUrl = $firstAid ? "{$baseUrl}/watch.php?v={$firstAid}&list={$pl['id']}" : "#";
+            $plThumb = $pl['first_thumbnail'] ? "{$baseUrl}/" . ltrim($pl['first_thumbnail'], '/') : "{$baseUrl}/assets/thumbnails/thumb-flowcv.png";
+            $vCount = (int)$pl['video_count'];
+          ?>
+            <div class="col">
+              <div class="yt-card">
+                <a href="<?= $playAllUrl ?>" class="d-block text-decoration-none">
+                  <div class="yt-thumb-wrapper position-relative overflow-hidden" style="border-radius: 12px;">
+                    <img src="<?= $plThumb ?>" alt="<?= h($pl['title']) ?>" loading="lazy">
+                    <!-- Signature YouTube Playlist Overlay on Right Side -->
+                    <div class="position-absolute top-0 end-0 bottom-0 d-flex flex-column align-items-center justify-content-center text-white px-2" style="background: rgba(0, 0, 0, 0.82); width: 40%; backdrop-filter: blur(4px);">
+                      <i class="bi bi-collection-play fs-4 mb-1"></i>
+                      <span class="fw-bold fs-6"><?= $vCount ?></span>
+                      <span class="small opacity-75" style="font-size: 0.65rem; text-transform: uppercase;">videos</span>
+                    </div>
+                    <!-- Hover PLAY ALL bar -->
+                    <div class="position-absolute bottom-0 start-0 w-100 p-2 text-white d-flex align-items-center gap-1 small" style="background: linear-gradient(transparent, rgba(0,0,0,0.85));">
+                      <i class="bi bi-play-fill text-danger fs-5"></i>
+                      <span class="fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">PLAY ALL</span>
+                    </div>
+                  </div>
+                </a>
+                <div class="yt-card-body px-1 pt-2">
+                  <div class="yt-card-info min-w-0">
+                    <a href="<?= $playAllUrl ?>" class="text-decoration-none">
+                      <h6 class="yt-card-title mb-1 text-dark fw-bold" title="<?= h($pl['title']) ?>"><?= h($pl['title']) ?></h6>
+                    </a>
+                    <div class="yt-card-meta small text-secondary">
+                      <div><?= $vCount ?> videos <?= $pl['description'] ? '• ' . h(substr($pl['description'], 0, 40)) . '...' : '' ?></div>
+                      <div class="mt-1"><a href="<?= $playAllUrl ?>" class="text-danger fw-semibold text-decoration-none small">View Full Playlist <i class="bi bi-arrow-right"></i></a></div>
                     </div>
                   </div>
                 </div>
@@ -420,8 +541,64 @@ include __DIR__ . '/includes/header.php';
           <div class="small mt-1">Place files in <code>assets/documents/</code> or <code>assets/archives/</code> and click Sync.</div>
         </div>
       <?php else: ?>
-        <div class="card bg-white border-light-subtle shadow-sm">
-          <div class="table-responsive">
+        <div class="card bg-white border-light-subtle shadow-sm overflow-hidden">
+          <!-- Mobile Card List View (< 768px) -->
+          <div class="d-md-none divide-y">
+            <?php foreach ($assetsList as $doc): 
+              $isPdf = (strtolower($doc['extension']) === 'pdf');
+              $rawUrl = "{$baseUrl}/" . ltrim($doc['file_path'], '/');
+              $iconClass = match($doc['extension']) {
+                'pdf' => 'bi-file-earmark-pdf-fill text-danger',
+                'doc', 'docx' => 'bi-file-earmark-word-fill text-primary',
+                'xls', 'xlsx', 'csv' => 'bi-file-earmark-excel-fill text-success',
+                'zip', 'rar', '7z' => 'bi-file-earmark-zip-fill text-warning',
+                default => 'bi-file-earmark-text-fill text-info'
+              };
+              
+              $shareData = json_encode([
+                'id'          => $doc['id'],
+                'title'       => $doc['title'],
+                'watchUrl'    => $rawUrl,
+                'cdnUrl'      => $rawUrl,
+                'embedTag'    => $isPdf ? "<iframe src=\"{$rawUrl}\" width=\"100%\" height=\"600\"></iframe>" : "<a href=\"{$rawUrl}\" download>Download " . h($doc['title']) . "</a>",
+                'markdownTag' => "[" . h($doc['title']) . "]({$rawUrl})"
+              ]);
+            ?>
+              <div class="p-3 border-bottom border-light-subtle">
+                <div class="d-flex align-items-start gap-3">
+                  <div class="rounded-3 p-2 bg-light d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; flex-shrink: 0;">
+                    <i class="bi <?= $iconClass ?>" style="font-size: 1.5rem;"></i>
+                  </div>
+                  <div class="flex-grow-1 min-w-0">
+                    <div class="fw-bold text-dark text-truncate mb-1"><?= h($doc['title']) ?></div>
+                    <div class="small text-secondary font-monospace text-truncate mb-2"><?= h($doc['file_name']) ?></div>
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-light text-dark border"><?= formatBytes((float)$doc['file_size']) ?></span>
+                        <span class="text-secondary small"><?= timeAgo($doc['created_at']) ?></span>
+                      </div>
+                      <div class="btn-group btn-group-sm">
+                        <?php if ($isPdf): ?>
+                          <button class="btn btn-outline-info preview-pdf-btn" data-url="<?= $rawUrl ?>" data-title="<?= h($doc['title']) ?>" title="Inline Preview">
+                            <i class="bi bi-eye"></i> Preview
+                          </button>
+                        <?php endif; ?>
+                        <button class="btn btn-outline-secondary" data-share-asset='<?= htmlspecialchars($shareData, ENT_QUOTES) ?>' title="Copy Link / Embed">
+                          <i class="bi bi-share"></i>
+                        </button>
+                        <a href="<?= $rawUrl ?>" download class="btn btn-danger" title="Download">
+                          <i class="bi bi-download me-1"></i> Download
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <?php endforeach; ?>
+          </div>
+
+          <!-- Desktop Table (>= 768px) -->
+          <div class="d-none d-md-block table-responsive">
             <table class="table table-hover mb-0 align-middle">
               <thead class="table-light">
                 <tr class="text-secondary small text-uppercase">

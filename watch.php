@@ -5,11 +5,10 @@
  * Features:
  * - HTML5 Custom Video Player with Scrubber, Speed, Theater, and Fullscreen
  * - Autoplay Countdown Overlay for Next Video
- * - Channel Header with Subscribe Button
- * - Unified Like / Dislike / Share / Download Action Pills
+ * - Unified Like / Share / Download Action Pills
  * - Clickable Video Chapters & Timestamps
- * - Interactive Comments Section
- * - Up Next Sidebar strictly with Recommended VIDEOS ONLY
+ * - Description & Copyright Info Panel (replaces comments)
+ * - Privacy: 0=private(admin only), 1=unlisted(link), 2=public(feed)
  */
 
 require_once __DIR__ . '/config/database.php';
@@ -17,6 +16,7 @@ require_once __DIR__ . '/config/auth.php';
 
 $pdo = getDB();
 $baseUrl = getBaseUrl();
+$isAdmin = (function_exists('isAdminLoggedIn') && isAdminLoggedIn());
 
 $assetId = $_GET['v'] ?? $_GET['id'] ?? null;
 if (!$assetId) {
@@ -40,9 +40,25 @@ if (!$asset) {
     exit;
 }
 
+// --- Privacy enforcement ---
+// visibility: 0=private (admin only), 1=unlisted (anyone with link), 2=public (everyone)
+$visibility = (int)($asset['visibility'] ?? ($asset['is_public'] >= 1 ? 2 : 0));
+
+if ($visibility === 0 && !$isAdmin) {
+    // Private: only admin can view
+    header("Location: {$baseUrl}/login.php?redirect=" . urlencode($_SERVER['REQUEST_URI']));
+    exit;
+}
+// Unlisted (visibility=1): anyone with the link can access — no redirect needed
+// Public (visibility=2): open access
+
 $isVideo = ($asset['asset_type'] === 'video');
 $isImage = ($asset['asset_type'] === 'image');
 $isDoc   = ($asset['asset_type'] === 'document' || $asset['asset_type'] === 'archive');
+$videoExt = strtolower($asset['extension'] ?? '');
+// Modern browsers only natively support MP4 (H.264/AAC), WebM (VP8/VP9), and M4V in HTML5.
+// Formats like WMV, FLV, MPG, AVI require external player (e.g. VLC) or conversion to MP4.
+$isWebNativeVideo = in_array($videoExt, ['mp4', 'webm', 'm4v']);
 
 // Fetch chapters if any
 $chapStmt = $pdo->prepare("SELECT * FROM video_chapters WHERE asset_id = :id ORDER BY timestamp_seconds ASC");
@@ -54,15 +70,16 @@ $tagStmt = $pdo->prepare("SELECT tag FROM asset_tags WHERE asset_id = :id");
 $tagStmt->execute([':id' => $asset['id']]);
 $tags = $tagStmt->fetchAll(PDO::FETCH_COLUMN);
 
-// Fetch Up Next / Recommended List - STRICTLY VIDEOS for videos!
+// Fetch Up Next / Recommended List - only public assets for guests
+$visFilter = $isAdmin ? 'a.id != :id' : 'a.id != :id AND a.visibility = 2';
 if ($isVideo) {
     $relStmt = $pdo->prepare("
         SELECT a.*, c.name AS category_name 
         FROM assets a 
         LEFT JOIN categories c ON a.category_id = c.id 
-        WHERE a.id != :id AND a.asset_type = 'video' AND a.is_public = 1 
+        WHERE $visFilter AND a.asset_type = 'video'
         ORDER BY a.created_at DESC 
-        LIMIT 10
+        LIMIT 15
     ");
     $relStmt->execute([':id' => $asset['id']]);
     $related = $relStmt->fetchAll();
@@ -71,9 +88,9 @@ if ($isVideo) {
         SELECT a.*, c.name AS category_name 
         FROM assets a 
         LEFT JOIN categories c ON a.category_id = c.id 
-        WHERE a.id != :id AND a.asset_type = :type AND a.is_public = 1 
+        WHERE $visFilter AND a.asset_type = :type 
         ORDER BY a.created_at DESC 
-        LIMIT 10
+        LIMIT 15
     ");
     $relStmt->execute([':id' => $asset['id'], ':type' => $asset['asset_type']]);
     $related = $relStmt->fetchAll();
@@ -81,6 +98,59 @@ if ($isVideo) {
 
 $nextVideo = !empty($related) ? $related[0] : null;
 $nextVideoUrl = $nextVideo ? "{$baseUrl}/watch.php?v={$nextVideo['id']}&autoplay=1" : '';
+
+// Check for active playlist in URL
+$playlistId = trim($_GET['list'] ?? '');
+$activePlaylist = null;
+$playlistVideos = [];
+$playlistIndex = -1;
+
+if (!empty($playlistId)) {
+    $plStmt = $pdo->prepare("SELECT * FROM playlists WHERE id = :id OR slug = :slug LIMIT 1");
+    $plStmt->execute([':id' => $playlistId, ':slug' => $playlistId]);
+    $activePlaylist = $plStmt->fetch();
+
+    if ($activePlaylist) {
+        $piStmt = $pdo->prepare("
+            SELECT a.id, a.title, a.duration_seconds, a.thumbnail_path, pi.position 
+            FROM playlist_items pi 
+            JOIN assets a ON pi.asset_id = a.id 
+            WHERE pi.playlist_id = :pid 
+            ORDER BY pi.position ASC, pi.created_at ASC
+        ");
+        $piStmt->execute([':pid' => $activePlaylist['id']]);
+        $playlistVideos = $piStmt->fetchAll();
+
+        foreach ($playlistVideos as $idx => $pv) {
+            if ($pv['id'] === $asset['id']) {
+                $playlistIndex = $idx;
+                break;
+            }
+        }
+
+        // Target next video in playlist for autoplay
+        if ($playlistIndex !== -1 && isset($playlistVideos[$playlistIndex + 1])) {
+            $nextPv = $playlistVideos[$playlistIndex + 1];
+            $nextVideo = [
+                'id' => $nextPv['id'],
+                'title' => $nextPv['title'],
+                'duration_seconds' => $nextPv['duration_seconds'],
+                'thumbnail_path' => $nextPv['thumbnail_path'],
+            ];
+            $nextVideoUrl = "{$baseUrl}/watch.php?v={$nextPv['id']}&list={$activePlaylist['id']}&autoplay=1";
+        } elseif (!empty($playlistVideos)) {
+            // End of playlist: loop back to beginning
+            $firstPv = $playlistVideos[0];
+            $nextVideo = [
+                'id' => $firstPv['id'],
+                'title' => $firstPv['title'],
+                'duration_seconds' => $firstPv['duration_seconds'],
+                'thumbnail_path' => $firstPv['thumbnail_path'],
+            ];
+            $nextVideoUrl = "{$baseUrl}/watch.php?v={$firstPv['id']}&list={$activePlaylist['id']}&autoplay=1";
+        }
+    }
+}
 
 $streamUrl = "{$baseUrl}/stream.php?v={$asset['id']}";
 $rawCdnUrl = "{$baseUrl}/" . ltrim($asset['file_path'], '/');
@@ -103,6 +173,9 @@ function formatDescriptionTimestamps(string $desc): string {
         return "<a href=\"#\" class=\"timestamp-link\" data-seek=\"{$seconds}\">{$timeStr}</a>";
     }, nl2br($escaped));
 }
+
+// Visibility badge info
+$visInfo = getVisibilityLabel($visibility);
 ?>
 
 <div class="watch-container">
@@ -141,7 +214,6 @@ function formatDescriptionTimestamps(string $desc): string {
                   </div>
                   <div class="min-w-0">
                     <div class="fw-bold text-white text-truncate small"><?= h($nextVideo['title']) ?></div>
-                    <div class="text-secondary small mt-1">Varun Akshay <i class="bi bi-patch-check-fill text-secondary"></i></div>
                     <div class="text-secondary font-monospace" style="font-size: 0.7rem;"><?= formatDuration((int)$nextVideo['duration_seconds']) ?></div>
                   </div>
                 </div>
@@ -151,6 +223,31 @@ function formatDescriptionTimestamps(string $desc): string {
                 </div>
               </div>
             <?php endif; ?>
+
+            <!-- Unsupported Format Overlay (Shows for WMV, FLV, MPG, AVI or decode errors) -->
+            <div class="yt-unsupported-overlay" id="unsupportedOverlay" style="<?= $isWebNativeVideo ? 'display: none;' : 'display: flex;' ?>">
+              <div class="text-center p-4" style="max-width: 580px;">
+                <div class="mb-3">
+                  <span class="badge bg-warning text-dark px-3 py-2 fs-6 rounded-pill">
+                    <i class="bi bi-file-earmark-play me-1"></i><?= strtoupper($videoExt) ?> Legacy Video Format
+                  </span>
+                </div>
+                <h4 class="text-white fw-bold mb-2"><?= h($asset['title']) ?></h4>
+                <p class="text-white-50 small mb-4" style="line-height: 1.5;">
+                  Modern web browsers (Chrome, Edge, Safari, Firefox) only support MP4 and WebM formats for direct in-browser streaming. <strong>.<?= htmlspecialchars($videoExt) ?></strong> files cannot be decoded natively by HTML5. You can download the file below to watch in <strong>VLC Media Player</strong> or <strong>Windows Media Player</strong>.
+                </p>
+                <div class="d-flex flex-wrap align-items-center justify-content-center gap-2">
+                  <a href="<?= $rawCdnUrl ?>" download="<?= h($asset['file_name']) ?>" class="btn btn-danger btn-lg rounded-pill px-4 shadow">
+                    <i class="bi bi-download me-2"></i>Download <?= strtoupper($videoExt) ?> (<?= formatBytes((float)$asset['file_size']) ?>)
+                  </a>
+                  <?php if (!$isWebNativeVideo): ?>
+                    <button type="button" class="btn btn-outline-light btn-sm rounded-pill px-3" id="tryPlayAnywayBtn">
+                      <i class="bi bi-play-circle me-1"></i>Try Browser Play
+                    </button>
+                  <?php endif; ?>
+                </div>
+              </div>
+            </div>
 
             <!-- Controls Overlay -->
             <div class="yt-controls-overlay">
@@ -239,29 +336,39 @@ function formatDescriptionTimestamps(string $desc): string {
         <div class="mt-3">
           <h1 class="h4 text-dark fw-bold mb-2"><?= h($asset['title']) ?></h1>
 
-          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pb-3 border-bottom border-light-subtle">
-            <!-- Channel / Author Info -->
-            <div class="d-flex align-items-center gap-3">
-              <div class="yt-comment-avatar" style="background: linear-gradient(135deg, #1e3c72, #2a5298); width: 44px; height: 44px; font-size: 1.1rem;">
-                VA
-              </div>
-              <div>
-                <div class="d-flex align-items-center gap-1">
-                  <span class="fw-bold text-dark">Varun Akshay</span>
-                  <i class="bi bi-patch-check-fill text-secondary small" title="Verified Creator"></i>
-                </div>
-                <div class="small text-secondary" style="font-size: 0.78rem;">14.2K subscribers</div>
-              </div>
-              <button class="btn btn-yt-subscribe ms-2" id="subscribeBtn">Subscribe</button>
-            </div>
+          <!-- Metadata Badges: Visibility & Format -->
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <?php if ($isAdmin || $visibility === VISIBILITY_UNLISTED): ?>
+              <span class="badge <?= $visInfo['badge'] ?> border small px-2 py-1">
+                <i class="bi <?= $visInfo['icon'] ?> me-1"></i><?= $visInfo['label'] ?>
+                <?php if ($visibility === VISIBILITY_UNLISTED && !$isAdmin): ?>
+                  <span class="ms-1 opacity-75">— accessible via link</span>
+                <?php endif; ?>
+              </span>
+            <?php endif; ?>
 
-            <!-- YouTube Unified Action Pills -->
-            <div class="d-flex align-items-center gap-2 flex-wrap">
+            <?php if ($isVideo): ?>
+              <?php if ($isWebNativeVideo): ?>
+                <span class="badge bg-success-subtle text-success border border-success-subtle small px-2 py-1">
+                  <i class="bi bi-play-circle-fill me-1"></i>Web Streamable (<?= strtoupper($videoExt) ?>)
+                </span>
+              <?php else: ?>
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle small px-2 py-1">
+                  <i class="bi bi-info-circle-fill me-1"></i><?= strtoupper($videoExt) ?> Format (Download for VLC)
+                </span>
+              <?php endif; ?>
+            <?php endif; ?>
+          </div>
+
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pb-3 border-bottom border-light-subtle">
+
+            <!-- Action Pills (horizontally scrollable on mobile) -->
+            <div class="yt-action-pills-scroll">
               <!-- Like / Dislike Group -->
               <div class="yt-action-pill-group">
                 <button class="yt-action-pill-btn" id="likeBtn" data-id="<?= $asset['id'] ?>" title="I like this">
                   <i class="bi bi-hand-thumbs-up"></i>
-                  <span id="likeCount"><?= number_format((int)$asset['likes_count'] ?: 3420) ?></span>
+                  <span id="likeCount"><?= number_format((int)$asset['likes_count'] ?: 0) ?></span>
                 </button>
                 <div class="yt-action-pill-divider"></div>
                 <button class="yt-action-pill-btn" id="dislikeBtn" title="I dislike this">
@@ -282,12 +389,12 @@ function formatDescriptionTimestamps(string $desc): string {
               </button>
 
               <!-- Download Button -->
-              <a href="<?= $isVideo ? $streamUrl : $rawCdnUrl ?>" download class="yt-action-pill-btn single" title="Download Video">
+              <a href="<?= $isVideo ? $streamUrl : $rawCdnUrl ?>" download class="yt-action-pill-btn single" title="Download">
                 <i class="bi bi-download"></i>
                 <span>Download</span>
               </a>
 
-              <?php if (isAdminLoggedIn()): ?>
+              <?php if ($isAdmin): ?>
                 <a href="<?= $baseUrl ?>/studio.php?edit=<?= $asset['id'] ?>" class="btn btn-outline-warning rounded-pill px-3 btn-sm">
                   <i class="bi bi-pencil-square me-1"></i> Edit
                 </a>
@@ -303,18 +410,18 @@ function formatDescriptionTimestamps(string $desc): string {
           <!-- Description Box with Clickable Chapters -->
           <div class="yt-desc-box" id="descBox">
             <div class="d-flex flex-wrap align-items-center gap-3 mb-2 small fw-bold text-dark">
-              <span><?= number_format((int)$asset['views_count'] ?: 3420) ?> views</span>
+              <span><?= number_format((int)$asset['views_count']) ?> views</span>
               <span>Premiered <?= date('M j, Y', strtotime($asset['created_at'])) ?></span>
               <span><?= formatBytes((float)$asset['file_size']) ?></span>
               <?php if (!empty($tags)): ?>
-                <?php foreach (array_slice($tags, 0, 3) as $t): ?>
+                <?php foreach (array_slice($tags, 0, 5) as $t): ?>
                   <span class="text-primary">#<?= h($t) ?></span>
                 <?php endforeach; ?>
               <?php endif; ?>
             </div>
 
             <div class="yt-desc-text" id="descText">
-              <?= formatDescriptionTimestamps($asset['description'] ?: 'High-definition video walkthrough covering end-to-end architecture, technical achievements, and key platform metrics.') ?>
+              <?= formatDescriptionTimestamps($asset['description'] ?: '') ?>
             </div>
 
             <!-- Clickable Video Chapters within description -->
@@ -335,110 +442,87 @@ function formatDescriptionTimestamps(string $desc): string {
             <?php endif; ?>
           </div>
 
-          <!-- Real YouTube Comments Section -->
-          <div class="mt-4 pt-2">
-            <div class="d-flex align-items-center gap-4 mb-4">
-              <h5 class="fw-bold text-dark mb-0">24 Comments</h5>
-              <button class="btn btn-link text-secondary text-decoration-none p-0 small fw-semibold">
-                <i class="bi bi-filter-left fs-5 align-middle me-1"></i> Sort by
-              </button>
+          <!-- Copyright / License Info Section -->
+          <?php 
+          $copyrightInfo = trim($asset['copyright_info'] ?? '');
+          if ($copyrightInfo || $isAdmin): 
+          ?>
+            <div class="mt-4 pt-3 border-top border-light-subtle">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-c-circle text-secondary"></i>
+                <span class="fw-bold text-dark small">Copyright & License</span>
+                <?php if ($isAdmin && !$copyrightInfo): ?>
+                  <span class="badge bg-warning-subtle text-warning border border-warning-subtle small ms-2">
+                    <i class="bi bi-pencil me-1"></i>No copyright info set — <a href="<?= $baseUrl ?>/studio.php?edit=<?= $asset['id'] ?>" class="text-warning text-decoration-none fw-bold">Edit</a>
+                  </span>
+                <?php endif; ?>
+              </div>
+              <?php if ($copyrightInfo): ?>
+                <div class="bg-light rounded-3 p-3 text-secondary small" style="line-height: 1.6;">
+                  <?= nl2br(htmlspecialchars($copyrightInfo, ENT_QUOTES, 'UTF-8')) ?>
+                </div>
+              <?php elseif ($isAdmin): ?>
+                <div class="bg-light rounded-3 p-3 text-muted small fst-italic">
+                  No copyright information available. Add copyright info via <a href="<?= $baseUrl ?>/studio.php?edit=<?= $asset['id'] ?>">Edit Asset</a>.
+                </div>
+              <?php endif; ?>
             </div>
+          <?php endif; ?>
 
-            <!-- Add a comment form -->
-            <div class="d-flex gap-3 mb-4">
-              <div class="yt-comment-avatar" style="background: #e65100; width: 38px; height: 38px;">
-                U
-              </div>
-              <div class="flex-grow-1">
-                <input type="text" class="form-control yt-comment-input" id="newCommentInput" placeholder="Add a comment...">
-                <div class="d-flex justify-content-end gap-2 mt-2 d-none" id="commentActionButtons">
-                  <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="cancelCommentBtn">Cancel</button>
-                  <button type="button" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold" id="submitCommentBtn">Comment</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Comments List -->
-            <div class="d-flex flex-column gap-3" id="commentsList">
-              <div class="d-flex gap-3">
-                <div class="yt-comment-avatar" style="background: #1976d2;">MD</div>
-                <div>
-                  <div class="d-flex align-items-center gap-2">
-                    <span class="fw-bold text-dark small">@marcus_dev</span>
-                    <span class="text-secondary" style="font-size: 0.75rem;">2 days ago</span>
-                  </div>
-                  <p class="text-dark small mb-1 mt-1">The structure of this resume with FlowCV is super clean. The way you mapped full-stack competencies and KPI metrics makes a huge difference for hiring managers.</p>
-                  <div class="d-flex align-items-center gap-2">
-                    <button class="yt-comment-action-btn"><i class="bi bi-hand-thumbs-up"></i> <span>14</span></button>
-                    <button class="yt-comment-action-btn"><i class="bi bi-hand-thumbs-down"></i></button>
-                    <button class="yt-comment-action-btn">Reply</button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="d-flex gap-3">
-                <div class="yt-comment-avatar" style="background: #7b1fa2;">ET</div>
-                <div>
-                  <div class="d-flex align-items-center gap-2">
-                    <span class="fw-bold text-dark small">@elena_tech</span>
-                    <span class="text-secondary" style="font-size: 0.75rem;">3 days ago</span>
-                  </div>
-                  <p class="text-dark small mb-1 mt-1">Really appreciate the walkthrough on the ATS optimization and typography hierarchy! Bookmarked this for reference.</p>
-                  <div class="d-flex align-items-center gap-2">
-                    <button class="yt-comment-action-btn"><i class="bi bi-hand-thumbs-up"></i> <span>9</span></button>
-                    <button class="yt-comment-action-btn"><i class="bi bi-hand-thumbs-down"></i></button>
-                    <button class="yt-comment-action-btn">Reply</button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="d-flex gap-3">
-                <div class="yt-comment-avatar" style="background: #388e3c;">DC</div>
-                <div>
-                  <div class="d-flex align-items-center gap-2">
-                    <span class="fw-bold text-dark small">@david_cloud</span>
-                    <span class="text-secondary" style="font-size: 0.75rem;">5 days ago</span>
-                  </div>
-                  <p class="text-dark small mb-1 mt-1">Excellent presentation. The project portfolio breakdown is spot on for engineering lead roles. Great pacing throughout the video.</p>
-                  <div class="d-flex align-items-center gap-2">
-                    <button class="yt-comment-action-btn"><i class="bi bi-hand-thumbs-up"></i> <span>6</span></button>
-                    <button class="yt-comment-action-btn"><i class="bi bi-hand-thumbs-down"></i></button>
-                    <button class="yt-comment-action-btn">Reply</button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="d-flex gap-3">
-                <div class="yt-comment-avatar" style="background: #f57c00;">SC</div>
-                <div>
-                  <div class="d-flex align-items-center gap-2">
-                    <span class="fw-bold text-dark small">@sarah_codes</span>
-                    <span class="text-secondary" style="font-size: 0.75rem;">1 week ago</span>
-                  </div>
-                  <p class="text-dark small mb-1 mt-1">The tip about separating core skills from cloud infrastructure makes scanning so much faster. Awesome work!</p>
-                  <div class="d-flex align-items-center gap-2">
-                    <button class="yt-comment-action-btn"><i class="bi bi-hand-thumbs-up"></i> <span>4</span></button>
-                    <button class="yt-comment-action-btn"><i class="bi bi-hand-thumbs-down"></i></button>
-                    <button class="yt-comment-action-btn">Reply</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
-      <!-- Right Column: Up Next / Recommended List (VIDEOS ONLY!) -->
+      <!-- Right Column: Up Next / Recommended List -->
       <div class="col-lg-4 col-xl-3">
-        <!-- Top Up Next / Autoplay Header -->
-        <div class="d-flex align-items-center justify-content-between mb-3">
-          <div class="d-flex align-items-center gap-1">
-            <button class="btn btn-sm btn-dark rounded-pill px-3 py-1 fw-semibold small">All</button>
-            <button class="btn btn-sm btn-light border rounded-pill px-3 py-1 text-secondary small">From Varun</button>
-            <button class="btn btn-sm btn-light border rounded-pill px-3 py-1 text-secondary small">Related</button>
+        <?php if ($activePlaylist && !empty($playlistVideos)): ?>
+          <!-- YouTube Playlist Queue Card -->
+          <div class="card border-danger border-opacity-25 shadow-sm mb-4 bg-white overflow-hidden">
+            <div class="card-header bg-danger text-white py-2 px-3 d-flex align-items-center justify-content-between">
+              <div class="min-w-0">
+                <div class="fw-bold text-truncate small d-flex align-items-center gap-1">
+                  <i class="bi bi-collection-play-fill"></i>
+                  <span><?= h($activePlaylist['title']) ?></span>
+                </div>
+                <div class="opacity-75" style="font-size: 0.72rem;">
+                  <?= ($playlistIndex !== -1 ? ($playlistIndex + 1) : 1) ?> / <?= count($playlistVideos) ?> videos
+                </div>
+              </div>
+              <span class="badge bg-white text-danger small">Playlist</span>
+            </div>
+            <div class="playlist-queue-scroll p-2 d-flex flex-column gap-1" style="max-height: 360px; overflow-y: auto;">
+              <?php foreach ($playlistVideos as $pIdx => $pItem): 
+                $isCurrent = ($pItem['id'] === $asset['id']);
+                $itemUrl = "{$baseUrl}/watch.php?v={$pItem['id']}&list={$activePlaylist['id']}";
+                $itemThumb = $pItem['thumbnail_path'] ? "{$baseUrl}/" . ltrim($pItem['thumbnail_path'], '/') : "{$baseUrl}/assets/thumbnails/thumb-flowcv.png";
+              ?>
+                <a href="<?= $itemUrl ?>" class="yt-upnext-card p-1 rounded text-decoration-none <?= $isCurrent ? 'bg-danger-subtle border border-danger-subtle' : '' ?>">
+                  <div class="d-flex align-items-center justify-content-center text-secondary small px-1 font-monospace" style="min-width: 22px;">
+                    <?php if ($isCurrent): ?>
+                      <i class="bi bi-play-fill text-danger fs-6"></i>
+                    <?php else: ?>
+                      <?= $pIdx + 1 ?>
+                    <?php endif; ?>
+                  </div>
+                  <div class="yt-upnext-thumb" style="width: 100px; height: 56px; flex-shrink: 0;">
+                    <img src="<?= $itemThumb ?>" alt="<?= h($pItem['title']) ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                    <span class="yt-duration-badge" style="font-size: 0.65rem; padding: 1px 3px;">
+                      <?= formatDuration((int)$pItem['duration_seconds']) ?>
+                    </span>
+                  </div>
+                  <div class="yt-upnext-info min-w-0">
+                    <div class="yt-upnext-title <?= $isCurrent ? 'fw-bold text-danger' : 'text-dark' ?>" title="<?= h($pItem['title']) ?>">
+                      <?= h($pItem['title']) ?>
+                    </div>
+                  </div>
+                </a>
+              <?php endforeach; ?>
+            </div>
           </div>
-          
-          <!-- Autoplay Switch -->
+        <?php endif; ?>
+
+        <!-- Autoplay Switch -->
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <span class="small fw-semibold text-secondary" style="font-size: 0.9rem;">Up Next</span>
           <div class="d-flex align-items-center gap-2">
             <span class="small fw-semibold text-secondary" style="font-size: 0.78rem;">Autoplay</span>
             <div class="form-check form-switch m-0 p-0" style="min-height: auto;">
@@ -447,7 +531,7 @@ function formatDescriptionTimestamps(string $desc): string {
           </div>
         </div>
 
-        <!-- Recommended Videos List (VIDEOS ONLY) -->
+        <!-- Recommended Videos List -->
         <div class="d-flex flex-column gap-2" id="upNextList">
           <?php if (empty($related)): ?>
             <div class="text-secondary small text-center p-3 border rounded bg-white">
@@ -470,12 +554,8 @@ function formatDescriptionTimestamps(string $desc): string {
                   <div class="yt-upnext-title" title="<?= h($rel['title']) ?>">
                     <?= h($rel['title']) ?>
                   </div>
-                  <div class="yt-upnext-channel">
-                    <span>Varun Akshay</span>
-                    <i class="bi bi-patch-check-fill text-secondary" style="font-size: 0.72rem;"></i>
-                  </div>
                   <div class="yt-upnext-meta">
-                    <?= number_format((int)$rel['views_count'] ?: 2180) ?> views • <?= timeAgo($rel['created_at']) ?>
+                    <?= number_format((int)$rel['views_count']) ?> views • <?= timeAgo($rel['created_at']) ?>
                   </div>
                 </div>
               </a>
@@ -531,22 +611,6 @@ function formatDescriptionTimestamps(string $desc): string {
 <script>
 // Next video URL passed from PHP for autoplay controller
 window.nextVideoUrl = <?= json_encode($nextVideoUrl) ?>;
-
-// Subscribe button interaction
-const subscribeBtn = document.getElementById('subscribeBtn');
-if (subscribeBtn) {
-  subscribeBtn.addEventListener('click', () => {
-    if (subscribeBtn.classList.contains('subscribed')) {
-      subscribeBtn.classList.remove('subscribed');
-      subscribeBtn.textContent = 'Subscribe';
-      showToast('Unsubscribed from channel');
-    } else {
-      subscribeBtn.classList.add('subscribed');
-      subscribeBtn.innerHTML = '<i class="bi bi-bell-fill text-dark me-1"></i> Subscribed';
-      showToast('Subscribed to Varun Akshay!');
-    }
-  });
-}
 
 // Dislike button toggle
 const dislikeBtn = document.getElementById('dislikeBtn');
@@ -655,50 +719,26 @@ if (shareModalEl && timestampCheck) {
   });
 }
 
-// Comment input focus & submission
-const commentInput = document.getElementById('newCommentInput');
-const commentActions = document.getElementById('commentActionButtons');
-const cancelCommentBtn = document.getElementById('cancelCommentBtn');
-const submitCommentBtn = document.getElementById('submitCommentBtn');
-const commentsList = document.getElementById('commentsList');
+// Fallback handling for non-browser formats (WMV, FLV, MPG, AVI)
+const mainVideoEl = document.getElementById('mainVideo');
+const unsupportedOverlayEl = document.getElementById('unsupportedOverlay');
+const tryPlayAnywayBtn = document.getElementById('tryPlayAnywayBtn');
 
-if (commentInput && commentActions) {
-  commentInput.addEventListener('focus', () => {
-    commentActions.classList.remove('d-none');
+if (mainVideoEl && unsupportedOverlayEl) {
+  mainVideoEl.addEventListener('error', () => {
+    unsupportedOverlayEl.style.display = 'flex';
   });
-
-  cancelCommentBtn.addEventListener('click', () => {
-    commentInput.value = '';
-    commentActions.classList.add('d-none');
-  });
-
-  submitCommentBtn.addEventListener('click', () => {
-    const text = commentInput.value.trim();
-    if (!text) return;
-
-    const newCommentEl = document.createElement('div');
-    newCommentEl.className = 'd-flex gap-3 animate__animated animate__fadeIn';
-    newCommentEl.innerHTML = `
-      <div class="yt-comment-avatar" style="background: #e65100;">U</div>
-      <div>
-        <div class="d-flex align-items-center gap-2">
-          <span class="fw-bold text-dark small">@you</span>
-          <span class="text-secondary" style="font-size: 0.75rem;">Just now</span>
-        </div>
-        <p class="text-dark small mb-1 mt-1">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
-        <div class="d-flex align-items-center gap-2">
-          <button class="yt-comment-action-btn"><i class="bi bi-hand-thumbs-up"></i> <span>0</span></button>
-          <button class="yt-comment-action-btn"><i class="bi bi-hand-thumbs-down"></i></button>
-          <button class="yt-comment-action-btn">Reply</button>
-        </div>
-      </div>
-    `;
-
-    commentsList.prepend(newCommentEl);
-    commentInput.value = '';
-    commentActions.classList.add('d-none');
-    showToast('Comment posted!');
-  });
+  if (tryPlayAnywayBtn) {
+    tryPlayAnywayBtn.addEventListener('click', () => {
+      unsupportedOverlayEl.style.display = 'none';
+      mainVideoEl.play().catch(err => {
+        unsupportedOverlayEl.style.display = 'flex';
+        if (typeof showToast === 'function') {
+          showToast('Browser cannot decode this video codec. Please download the file to play.');
+        }
+      });
+    });
+  }
 }
 </script>
 

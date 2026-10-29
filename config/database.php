@@ -4,12 +4,30 @@
  * Runit Showcase & Media CDN Vault
  */
 
-// Database credentials for XAMPP
-define('DB_HOST', '127.0.0.1');
-define('DB_PORT', 3306);
-define('DB_NAME', 'showcase_db');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+// -----------------------------------------------------------------
+// Environment detection: Hostinger / Live Server vs local XAMPP
+// -----------------------------------------------------------------
+$serverHost = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '';
+$hostNameOnly = strtolower(explode(':', $serverHost)[0]);
+$isLocal = in_array($hostNameOnly, ['localhost', '127.0.0.1', '::1', '']) && empty(getenv('HOSTINGER'));
+
+if (!$isLocal) {
+    // Hostinger Live Database (defaults to localhost socket, fallback to 127.0.0.1 TCP)
+    define('DB_HOST', 'localhost');
+    define('DB_HOST_ALT', '127.0.0.1');
+    define('DB_PORT', 3306);
+    define('DB_NAME', 'u935057905_runit_ispark');
+    define('DB_USER', 'u935057905_runit_ispark');
+    define('DB_PASS', 'Maruthuvk@2026');
+} else {
+    // Local XAMPP
+    define('DB_HOST', '127.0.0.1');
+    define('DB_HOST_ALT', 'localhost');
+    define('DB_PORT', 3306);
+    define('DB_NAME', 'showcase_db');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
+}
 
 // Base root directory paths
 define('ROOT_DIR', dirname(__DIR__));
@@ -17,23 +35,43 @@ define('ASSETS_DIR', ROOT_DIR . DIRECTORY_SEPARATOR . 'assets');
 define('THUMBNAILS_DIR', ASSETS_DIR . DIRECTORY_SEPARATOR . 'thumbnails');
 
 /**
- * Get PDO Database Connection (Singleton)
+ * Visibility constants:
+ * VISIBILITY_PRIVATE   = 0 — admin only
+ * VISIBILITY_UNLISTED  = 1 — anyone with link
+ * VISIBILITY_PUBLIC    = 2 — visible in public feed
+ */
+define('VISIBILITY_PRIVATE',  0);
+define('VISIBILITY_UNLISTED', 1);
+define('VISIBILITY_PUBLIC',   2);
+
+/**
+ * Get PDO Database Connection (Singleton with host fallback)
  */
 function getDB(): PDO {
     static $pdo = null;
     if ($pdo === null) {
-        $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
         $options = [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES   => true,
+            PDO::ATTR_TIMEOUT            => 5,
         ];
-        try {
-            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
-            ensureAdminUser($pdo);
-        } catch (PDOException $e) {
-            die("Database connection failed: " . htmlspecialchars($e->getMessage()));
+        
+        $hosts = array_unique([DB_HOST, DB_HOST_ALT]);
+        $lastException = null;
+
+        foreach ($hosts as $host) {
+            try {
+                $dsn = "mysql:host=" . $host . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+                $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+                ensureAdminUser($pdo);
+                return $pdo;
+            } catch (PDOException $e) {
+                $lastException = $e;
+            }
         }
+
+        die("Database connection failed: " . htmlspecialchars($lastException ? $lastException->getMessage() : 'Unknown error'));
     }
     return $pdo;
 }
@@ -42,22 +80,31 @@ function getDB(): PDO {
  * Ensure Superadmin exists with password 'ChangeMe@123' if no user exists
  */
 function ensureAdminUser(PDO $pdo): void {
-    $count = (int)$pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
-    if ($count === 0) {
-        $hash = password_hash('ChangeMe@123', PASSWORD_BCRYPT);
-        $insert = $pdo->prepare("INSERT INTO users (username, password_hash, role) VALUES ('superadmin', :hash, 'superadmin')");
-        $insert->execute([':hash' => $hash]);
+    try {
+        $count = (int)$pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+        if ($count === 0) {
+            $hash = password_hash('ChangeMe@123', PASSWORD_BCRYPT);
+            $insert = $pdo->prepare("INSERT INTO users (username, password_hash, role) VALUES ('superadmin', :hash, 'superadmin')");
+            $insert->execute([':hash' => $hash]);
+        }
+    } catch (Exception $e) {
+        // Table may not be created yet during first-time migration
     }
 }
 
 /**
  * Dynamically determine the application base URL
+ * Fully supports SSL reverse proxies (Cloudflare, Hostinger, Nginx)
  */
 function getBaseUrl(): string {
     if (defined('CUSTOM_BASE_URL') && CUSTOM_BASE_URL) {
         return rtrim(CUSTOM_BASE_URL, '/');
     }
-    $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443)
+        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
+        || (isset($_SERVER['HTTP_X_FORWARDED_SSL']) && strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) === 'on');
+    $scheme = $isHttps ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     
     // Check script directory relative to document root
@@ -66,7 +113,7 @@ function getBaseUrl(): string {
     if ($dir === '/' || $dir === '\\') {
         $dir = '';
     } else {
-        // Remove subfolders like /api or /includes if called from there
+        // Remove subfolders like /api or /includes or /scripts if called from there
         $dir = preg_replace('#/(api|includes|scripts)$#', '', $dir);
     }
     return rtrim($scheme . '://' . $host . $dir, '/');
@@ -117,4 +164,16 @@ function timeAgo(string $datetime): string {
  */
 function h(string|null $str): string {
     return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * Get visibility label and badge class for display
+ */
+function getVisibilityLabel(int $visibility): array {
+    return match($visibility) {
+        VISIBILITY_PRIVATE  => ['label' => 'Private',  'badge' => 'bg-danger-subtle text-danger',   'icon' => 'bi-lock-fill'],
+        VISIBILITY_UNLISTED => ['label' => 'Unlisted', 'badge' => 'bg-warning-subtle text-warning', 'icon' => 'bi-link-45deg'],
+        VISIBILITY_PUBLIC   => ['label' => 'Public',   'badge' => 'bg-success-subtle text-success', 'icon' => 'bi-globe2'],
+        default             => ['label' => 'Public',   'badge' => 'bg-success-subtle text-success', 'icon' => 'bi-globe2'],
+    };
 }

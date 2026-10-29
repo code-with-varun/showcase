@@ -50,7 +50,34 @@ if (!isset($_GET['preview'])) {
 }
 
 $fileSize = filesize($filePath);
-$mimeType = $asset['mime_type'] ?: 'application/octet-stream';
+$mimeType = $asset['mime_type'] ?: '';
+$ext = strtolower($asset['extension'] ?? pathinfo($filePath, PATHINFO_EXTENSION));
+
+// Ensure accurate MIME type for media streaming & download
+if (empty($mimeType) || $mimeType === 'application/octet-stream') {
+    $knownMimes = [
+        'mp4'  => 'video/mp4',
+        'm4v'  => 'video/mp4',
+        'webm' => 'video/webm',
+        'mov'  => 'video/quicktime',
+        'mkv'  => 'video/x-matroska',
+        'avi'  => 'video/x-msvideo',
+        'wmv'  => 'video/x-ms-wmv',
+        'flv'  => 'video/x-flv',
+        'mpg'  => 'video/mpeg',
+        'mpeg' => 'video/mpeg',
+        'ts'   => 'video/mp2t',
+        'png'  => 'image/png',
+        'jpg'  => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'webp' => 'image/webp',
+        'gif'  => 'image/gif',
+        'svg'  => 'image/svg+xml',
+        'pdf'  => 'application/pdf'
+    ];
+    $mimeType = $knownMimes[$ext] ?? 'application/octet-stream';
+}
+
 $fileName = basename($filePath);
 
 // Clear output buffers

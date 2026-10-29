@@ -286,8 +286,82 @@ include __DIR__ . '/includes/header.php';
       </div>
 
     </div>
+
+    <!-- Danger Zone: Global System Reset -->
+    <div class="col-12 mt-4" id="danger-zone">
+      <div class="card border-danger border-opacity-50 shadow-sm bg-white">
+        <div class="card-header bg-danger-subtle border-bottom border-danger-subtle py-3 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
+            <h6 class="fw-bold text-danger mb-0">Danger Zone: Global System Reset</h6>
+          </div>
+          <span class="badge bg-danger text-white small">Irreversible</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row align-items-center justify-content-between g-3">
+            <div class="col-md-8">
+              <h6 class="fw-bold text-dark mb-1">Purge All Media Assets & Database Records</h6>
+              <p class="text-secondary small mb-0">
+                This will truncate all asset tables (<code>assets</code>, <code>asset_tags</code>, <code>video_chapters</code>, <code>cdn_logs</code>) and permanently delete all physical files inside the <code>assets/</code> folders (videos, images, documents, and thumbnails). Your superadmin login credentials and categories will be safely preserved.
+              </p>
+            </div>
+            <div class="col-md-4 text-md-end">
+              <button type="button" class="btn btn-outline-danger px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#globalResetModal">
+                <i class="bi bi-trash3-fill"></i>
+                <span>Reset Database & Assets</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
+</div>
+
+<!-- Global Reset Confirmation Modal -->
+<div class="modal fade" id="globalResetModal" tabindex="-1" aria-labelledby="globalResetModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-white text-dark border-danger border-opacity-50 shadow-lg">
+      <div class="modal-header bg-danger text-white py-3">
+        <h5 class="modal-title d-flex align-items-center gap-2" id="globalResetModalLabel">
+          <i class="bi bi-exclamation-octagon-fill"></i>
+          <span>Confirm Global System Reset</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="alert alert-danger py-2 small mb-3">
+          <strong>⚠️ Warning:</strong> This operation will permanently erase <strong>all uploaded files</strong> in <code>assets/</code> and <strong>truncate all database asset tables</strong>. This cannot be undone.
+        </div>
+
+        <form id="globalResetForm">
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-dark">
+              Enter Superadmin Password <span class="text-danger">*</span>
+            </label>
+            <input type="password" class="form-control border-secondary-subtle" id="resetPassword" placeholder="Your current admin password" required autocomplete="current-password">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-dark">
+              Type <strong class="text-danger">RESET</strong> to confirm <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control border-secondary-subtle font-monospace" id="resetConfirmText" placeholder="RESET" required autocomplete="off">
+          </div>
+
+          <div id="resetStatusAlert" class="alert d-none py-2 small mt-2"></div>
+        </form>
+      </div>
+      <div class="modal-footer bg-light border-top border-light-subtle py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger btn-sm d-flex align-items-center gap-2" id="executeResetBtn">
+          <i class="bi bi-trash3-fill"></i>
+          <span id="executeResetBtnText">Permanently Wipe Everything</span>
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -332,6 +406,78 @@ function validatePasswordsMatch() {
 if (newPwd && confirmPwd) {
   newPwd.addEventListener('input', validatePasswordsMatch);
   confirmPwd.addEventListener('input', validatePasswordsMatch);
+}
+
+// Global System Reset Execution
+const executeResetBtn = document.getElementById('executeResetBtn');
+const executeResetBtnText = document.getElementById('executeResetBtnText');
+const resetPassword = document.getElementById('resetPassword');
+const resetConfirmText = document.getElementById('resetConfirmText');
+const resetStatusAlert = document.getElementById('resetStatusAlert');
+
+if (executeResetBtn) {
+  executeResetBtn.addEventListener('click', async () => {
+    const pwd = resetPassword.value.trim();
+    const conf = resetConfirmText.value.trim();
+
+    if (!pwd) {
+      resetStatusAlert.className = 'alert alert-danger py-2 small';
+      resetStatusAlert.textContent = 'Please enter your current admin password.';
+      resetStatusAlert.classList.remove('d-none');
+      resetPassword.focus();
+      return;
+    }
+
+    if (conf.toUpperCase() !== 'RESET') {
+      resetStatusAlert.className = 'alert alert-danger py-2 small';
+      resetStatusAlert.textContent = 'Please type RESET in capital letters to confirm.';
+      resetStatusAlert.classList.remove('d-none');
+      resetConfirmText.focus();
+      return;
+    }
+
+    // Confirmation prompt
+    if (!confirm('FINAL WARNING: This will permanently delete all files in assets/ and wipe the database. Are you absolutely certain?')) {
+      return;
+    }
+
+    executeResetBtn.disabled = true;
+    executeResetBtnText.textContent = 'Purging Database & Files...';
+    resetStatusAlert.className = 'alert alert-info py-2 small';
+    resetStatusAlert.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Resetting system...';
+    resetStatusAlert.classList.remove('d-none');
+
+    try {
+      const formData = new FormData();
+      formData.append('password', pwd);
+      formData.append('confirm_text', conf);
+
+      const resp = await fetch('<?= $baseUrl ?>/api/reset.php', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await resp.json();
+
+      if (data.success) {
+        resetStatusAlert.className = 'alert alert-success py-2 small';
+        resetStatusAlert.textContent = data.message + ` (${data.files_deleted} files, ${data.db_records_removed} db records purged)`;
+        executeResetBtnText.textContent = 'Reset Completed!';
+        setTimeout(() => {
+          window.location.href = '<?= $baseUrl ?>/studio.php';
+        }, 1500);
+      } else {
+        executeResetBtn.disabled = false;
+        executeResetBtnText.textContent = 'Permanently Wipe Everything';
+        resetStatusAlert.className = 'alert alert-danger py-2 small';
+        resetStatusAlert.textContent = data.error || 'Reset failed.';
+      }
+    } catch (err) {
+      executeResetBtn.disabled = false;
+      executeResetBtnText.textContent = 'Permanently Wipe Everything';
+      resetStatusAlert.className = 'alert alert-danger py-2 small';
+      resetStatusAlert.textContent = 'Network or server error during reset.';
+    }
+  });
 }
 </script>
 

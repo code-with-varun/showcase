@@ -65,6 +65,12 @@ $id = $sync->generateUniqueId();
 $title = !empty($_POST['title']) ? trim($_POST['title']) : $sync->formatTitle($originalName);
 $slug = $sync->slugify($title) . '-' . substr($id, 0, 4);
 $description = !empty($_POST['description']) ? trim($_POST['description']) : "Uploaded via Web Studio: {$originalName}";
+$copyrightInfo = !empty($_POST['copyright_info']) ? trim($_POST['copyright_info']) : null;
+
+// Visibility: 0=private, 1=unlisted (default), 2=public
+$visibility = isset($_POST['visibility']) ? (int)$_POST['visibility'] : 1;
+$visibility = max(0, min(2, $visibility));
+$isPublic   = ($visibility >= 1) ? 1 : 0;
 
 // Project assignment
 $project = !empty($_POST['project']) ? trim($_POST['project']) : null;
@@ -96,30 +102,33 @@ if ($assetType === 'image') {
 // Insert into assets table
 $insert = $pdo->prepare("
     INSERT INTO assets (
-        id, title, slug, description, asset_type, category_id, project,
+        id, title, slug, description, copyright_info, asset_type, category_id, project,
         file_path, file_name, file_size, mime_type, extension,
-        thumbnail_path, source, is_public, created_at, updated_at
+        thumbnail_path, source, visibility, is_public, created_at, updated_at
     ) VALUES (
-        :id, :title, :slug, :desc, :type, :cat_id, :proj,
+        :id, :title, :slug, :desc, :copyright, :type, :cat_id, :proj,
         :path, :filename, :size, :mime, :ext,
-        :thumb, 'web_upload', 1, NOW(), NOW()
+        :thumb, 'web_upload', :visibility, :is_public, NOW(), NOW()
     )
 ");
 
 $insert->execute([
-    ':id'       => $id,
-    ':title'    => $title,
-    ':slug'     => $slug,
-    ':desc'     => $description,
-    ':type'     => $assetType,
-    ':cat_id'   => $categoryId,
-    ':proj'     => $project,
-    ':path'     => $relPath,
-    ':filename' => $newFileName,
-    ':size'     => $fileSize,
-    ':mime'     => $mimeType,
-    ':ext'      => $ext,
-    ':thumb'    => $thumbRelPath
+    ':id'         => $id,
+    ':title'      => $title,
+    ':slug'       => $slug,
+    ':desc'       => $description,
+    ':copyright'  => $copyrightInfo,
+    ':type'       => $assetType,
+    ':cat_id'     => $categoryId,
+    ':proj'       => $project,
+    ':path'       => $relPath,
+    ':filename'   => $newFileName,
+    ':size'       => $fileSize,
+    ':mime'       => $mimeType,
+    ':ext'        => $ext,
+    ':thumb'      => $thumbRelPath,
+    ':visibility' => $visibility,
+    ':is_public'  => $isPublic,
 ]);
 
 // Handle tags
