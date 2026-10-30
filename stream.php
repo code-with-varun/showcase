@@ -47,6 +47,20 @@ if (!isset($_GET['preview'])) {
         $updateView = $pdo->prepare("UPDATE assets SET views_count = views_count + 1 WHERE id = :id");
         $updateView->execute([':id' => $asset['id']]);
     }
+    // CRITICAL: Always release session lock immediately so other requests never block!
+    session_write_close();
+}
+
+$baseUrl = getBaseUrl();
+$rawStaticUrl = $baseUrl . '/' . ltrim($asset['file_path'], '/');
+$visibility = (int)($asset['visibility'] ?? ($asset['is_public'] >= 1 ? 2 : 0));
+
+// DIRECT STATIC STREAMING BYPASS:
+// For public/unlisted assets not requesting a forced download, redirect directly
+// to Apache so Hostinger's Cloud CDN streams the video with 0 PHP overhead and no timeouts!
+if ($visibility >= 1 && empty($_GET['download']) && !isset($_GET['raw'])) {
+    header("Location: {$rawStaticUrl}", true, 302);
+    exit;
 }
 
 $fileSize = filesize($filePath);
@@ -80,8 +94,9 @@ if (empty($mimeType) || $mimeType === 'application/octet-stream') {
 
 $fileName = basename($filePath);
 
-// Clear output buffers
-if (ob_get_level()) ob_end_clean();
+// Disable PHP execution time limit and clear output buffers
+@set_time_limit(0);
+while (ob_get_level()) ob_end_clean();
 
 $fp = @fopen($filePath, 'rb');
 if (!$fp) {
@@ -118,11 +133,11 @@ if (isset($_SERVER['HTTP_RANGE'])) {
     header('HTTP/1.1 200 OK');
 }
 
-// Common headers
+// Common headers - optimized for Hostinger Edge CDN caching
 header("Content-Type: $mimeType");
 header("Content-Length: $length");
 header("Accept-Ranges: bytes");
-header("Cache-Control: public, max-age=604800");
+header("Cache-Control: public, max-age=2592000, immutable");
 header('Last-Modified: ' . gmdate('D, d M Y H:i:s', filemtime($filePath)) . ' GMT');
 header('ETag: "' . md5($asset['id'] . $fileSize . filemtime($filePath)) . '"');
 
@@ -133,8 +148,8 @@ if (isset($_GET['download']) && $_GET['download'] == '1') {
     header("Content-Disposition: inline; filename=\"$fileName\"");
 }
 
-// Stream the data in 64KB chunks
-$bufferSize = 65536;
+// Stream data using an optimized 1MB buffer (reduces CPU cycles by 16x over 64KB)
+$bufferSize = 1048576; // 1 MB buffer
 $bytesSent = 0;
 
 while (!feof($fp) && ($bytesSent < $length) && (connection_status() === 0)) {

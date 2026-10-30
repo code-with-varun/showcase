@@ -76,7 +76,14 @@ AddDefaultCharset UTF-8
     # Enable byte ranges for media scrubbing
     Header set Accept-Ranges "bytes"
 
-    # Cache static assets
+    # Cache video and audio streaming media on Hostinger CDN Edge
+    <FilesMatch "\.(mp4|webm|m4v|mov|mkv|mp3|ogg|wav)$">
+        Header set Cache-Control "public, max-age=2592000, immutable"
+        Header set Accept-Ranges "bytes"
+        Header unset Pragma
+    </FilesMatch>
+
+    # Cache static images and UI assets
     <FilesMatch "\.(css|js|png|jpg|jpeg|webp|svg|gif|ico|woff|woff2)$">
         Header set Cache-Control "max-age=2592000, public"
     </FilesMatch>

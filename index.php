@@ -338,6 +338,7 @@ include __DIR__ . '/includes/header.php';
                   ]);
                   $vExt = strtolower($vid['extension'] ?? 'mp4');
                   $canWebPreview = in_array($vExt, ['mp4', 'webm', 'm4v']);
+                  $rawVideoUrl = "{$baseUrl}/" . ltrim($vid['file_path'], '/');
                 ?>
                   <div class="col video-card-col" data-video-id="<?= $vid['id'] ?>" data-video-project="<?= h($pName) ?>">
                     <div class="yt-card">
@@ -345,8 +346,8 @@ include __DIR__ . '/includes/header.php';
                         <a href="<?= $watchUrl ?>" class="d-block w-100 h-100 text-decoration-none">
                           <img src="<?= $thumbUrl ?>" alt="<?= h($vid['title']) ?>" loading="lazy">
                           <?php if ($canWebPreview): ?>
-                            <!-- Hover silent video preview (10s snippet) -->
-                            <video class="hover-preview" src="<?= $streamUrl ?>&preview=1" muted playsinline preload="none"></video>
+                            <!-- Hover silent video preview (10s snippet) - direct static bypass -->
+                            <video class="hover-preview" src="<?= $rawVideoUrl ?>" muted playsinline preload="none"></video>
                             <span class="yt-type-badge bg-danger">MP4</span>
                           <?php else: ?>
                             <span class="yt-type-badge bg-secondary"><?= strtoupper($vExt) ?></span>

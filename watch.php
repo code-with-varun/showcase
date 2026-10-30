@@ -52,6 +52,16 @@ if ($visibility === 0 && !$isAdmin) {
 // Unlisted (visibility=1): anyone with the link can access — no redirect needed
 // Public (visibility=2): open access
 
+// Track video view on watch page with session debounce (releases session lock immediately!)
+if (session_status() === PHP_SESSION_NONE) session_start();
+$viewKey = 'viewed_' . $asset['id'];
+if (!isset($_SESSION[$viewKey])) {
+    $_SESSION[$viewKey] = time();
+    $updateView = $pdo->prepare("UPDATE assets SET views_count = views_count + 1 WHERE id = :id");
+    $updateView->execute([':id' => $asset['id']]);
+}
+session_write_close();
+
 $isVideo = ($asset['asset_type'] === 'video');
 $isImage = ($asset['asset_type'] === 'image');
 $isDoc   = ($asset['asset_type'] === 'document' || $asset['asset_type'] === 'archive');
@@ -279,7 +289,11 @@ $visInfo = getVisibilityLabel($visibility);
         <!-- YouTube Custom Player -->
         <div class="yt-player-container" id="ytPlayerContainer" data-asset-id="<?= $asset['id'] ?>">
           <?php if ($isVideo): ?>
-            <video id="mainVideo" src="<?= $streamUrl ?>" poster="<?= $asset['thumbnail_path'] ? $baseUrl . '/' . ltrim($asset['thumbnail_path'], '/') : '' ?>" playsinline preload="auto" <?= (!empty($_GET['autoplay']) && $_GET['autoplay'] == '1') ? 'autoplay' : '' ?>></video>
+            <?php 
+              // Direct static streaming bypass: connect directly to Apache / Hostinger CDN for instant buffering
+              $playerVideoSrc = ($isWebNativeVideo && $visibility >= 1) ? $rawCdnUrl : $streamUrl;
+            ?>
+            <video id="mainVideo" src="<?= $playerVideoSrc ?>" poster="<?= $asset['thumbnail_path'] ? $baseUrl . '/' . ltrim($asset['thumbnail_path'], '/') : '' ?>" playsinline preload="auto" <?= (!empty($_GET['autoplay']) && $_GET['autoplay'] == '1') ? 'autoplay' : '' ?>></video>
             
             <!-- Seek Ripple Overlays (for double-click and button clicks) -->
             <div class="yt-seek-overlay yt-seek-overlay-left" id="seekOverlayLeft" style="display: none;">

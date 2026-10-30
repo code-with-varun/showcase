@@ -22,10 +22,12 @@ if (!$asset) {
     die("Asset not found.");
 }
 
-$streamUrl = "{$baseUrl}/stream.php?v={$asset['id']}";
-$watchUrl  = "{$baseUrl}/watch.php?v={$asset['id']}";
-$autoplay  = (isset($_GET['autoplay']) && $_GET['autoplay'] == '1');
-$mute      = (isset($_GET['mute']) && $_GET['mute'] == '1');
+$rawStaticUrl = "{$baseUrl}/" . ltrim($asset['file_path'], '/');
+$visibility   = (int)($asset['visibility'] ?? ($asset['is_public'] >= 1 ? 2 : 0));
+$streamUrl    = ($visibility >= 1) ? $rawStaticUrl : "{$baseUrl}/stream.php?v={$asset['id']}";
+$watchUrl     = "{$baseUrl}/watch/" . ($asset['slug'] ?: $asset['id']);
+$autoplay     = (isset($_GET['autoplay']) && $_GET['autoplay'] == '1');
+$mute         = (isset($_GET['mute']) && $_GET['mute'] == '1');
 ?>
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="light">
