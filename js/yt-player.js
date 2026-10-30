@@ -35,14 +35,110 @@ class YTPlayer {
     this.lastProgressSave = 0;
     this.isDragging = false;
     this.autoplayTimer = null;
+    this.controlsTimer = null;
+    this.controlsOverlay = this.container.querySelector('.yt-controls-overlay');
+    this.lastTouchTime = 0;
+    this.lastTapTime = 0;
+    this.lastTapX = 0;
+    this.tapTimeout = null;
     this.init();
   }
 
   init() {
     if (!this.video) return;
 
+    // Video click - on desktop toggles play/pause, on mobile ignored if handled by touch
+    this.video.addEventListener('click', (e) => {
+      if (Date.now() - this.lastTouchTime < 600) return;
+      this.togglePlay();
+    });
+
+    // Touch events for mobile control visibility & double tap seek
+    this.container.addEventListener('touchstart', (e) => {
+      this.lastTouchTime = Date.now();
+
+      // If user tapped directly inside controls or overlays, keep controls open and let button act
+      if (e.target.closest('.yt-controls-overlay') || e.target.closest('#autoplayOverlay') || e.target.closest('#unsupportedOverlay') || e.target.closest('#ytResumeToast')) {
+        this.showControls();
+        this.resetControlsTimer(3500);
+        return;
+      }
+
+      const now = Date.now();
+      const touch = e.touches[0];
+      const rect = this.container.getBoundingClientRect();
+      const touchX = touch.clientX - rect.left;
+
+      // Double-tap to seek on mobile (+/- 10s)
+      if (now - this.lastTapTime < 320 && Math.abs(touchX - this.lastTapX) < 100) {
+        clearTimeout(this.tapTimeout);
+        this.tapTimeout = null;
+        this.lastTapTime = 0;
+        if (touchX < rect.width / 2) {
+          this.seekRelative(-10);
+        } else {
+          this.seekRelative(10);
+        }
+        this.showControls();
+        this.resetControlsTimer(2500);
+        return;
+      }
+
+      this.lastTapTime = now;
+      this.lastTapX = touchX;
+
+      // Differentiate single tap from double-tap
+      clearTimeout(this.tapTimeout);
+      this.tapTimeout = setTimeout(() => {
+        if (this.video.paused) {
+          this.togglePlay();
+        } else {
+          const isControlsHidden = this.container.classList.contains('hide-controls') || 
+                                   !this.container.classList.contains('show-controls');
+          if (isControlsHidden) {
+            // Single tap reveals controls and starts 3-second auto-hide timer
+            this.showControls();
+            this.resetControlsTimer(3000);
+          } else {
+            // Tap when controls are showing hides them immediately
+            this.hideControls();
+          }
+        }
+      }, 280);
+    }, { passive: true });
+
+    // Desktop mouse activity reveals controls and auto-hides after 3s
+    this.container.addEventListener('mousemove', () => {
+      if (Date.now() - this.lastTouchTime < 600) return;
+      this.showControls();
+      this.resetControlsTimer(3000);
+    });
+
+    this.container.addEventListener('mouseleave', () => {
+      if (Date.now() - this.lastTouchTime < 600) return;
+      if (this.video && !this.video.paused && !this.isDragging) {
+        this.hideControls();
+      }
+    });
+
+    // Keep controls open when interacting directly with controls overlay
+    if (this.controlsOverlay) {
+      const keepOpen = () => {
+        this.showControls();
+        this.resetControlsTimer(3500);
+      };
+      this.controlsOverlay.addEventListener('mousemove', keepOpen);
+      this.controlsOverlay.addEventListener('touchstart', () => {
+        this.lastTouchTime = Date.now();
+        keepOpen();
+      }, { passive: true });
+      this.controlsOverlay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        keepOpen();
+      });
+    }
+
     // Video events
-    this.video.addEventListener('click', () => this.togglePlay());
     this.video.addEventListener('play', () => this.onPlay());
     this.video.addEventListener('pause', () => this.onPause());
     this.video.addEventListener('timeupdate', () => this.onTimeUpdate());
@@ -67,8 +163,9 @@ class YTPlayer {
       });
     }
 
-    // Double click to seek: left half = -10s, right half = +10s
+    // Desktop double click to seek
     this.video.addEventListener('dblclick', (e) => {
+      if (Date.now() - this.lastTouchTime < 600) return;
       const rect = this.video.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
       if (clickX < rect.width / 2) {
@@ -78,13 +175,38 @@ class YTPlayer {
       }
     });
 
-    // Progress bar events
+    // Progress bar events with drag support
     if (this.progressContainer) {
       this.progressContainer.addEventListener('click', (e) => this.seek(e));
       this.progressContainer.addEventListener('mousemove', (e) => this.onProgressHover(e));
       this.progressContainer.addEventListener('mouseleave', () => {
-        if (this.scrubTooltip) this.scrubTooltip.style.display = 'none';
+        if (!this.isDragging && this.scrubTooltip) this.scrubTooltip.style.display = 'none';
       });
+
+      const onScrubStart = (e) => {
+        this.isDragging = true;
+        this.showControls();
+        if (this.controlsTimer) clearTimeout(this.controlsTimer);
+        this.seek(e);
+      };
+      const onScrubMove = (e) => {
+        if (!this.isDragging) return;
+        this.seek(e);
+      };
+      const onScrubEnd = () => {
+        if (!this.isDragging) return;
+        this.isDragging = false;
+        if (this.video && !this.video.paused) {
+          this.resetControlsTimer(2500);
+        }
+      };
+
+      this.progressContainer.addEventListener('mousedown', onScrubStart);
+      this.progressContainer.addEventListener('touchstart', onScrubStart, { passive: true });
+      window.addEventListener('mousemove', onScrubMove);
+      window.addEventListener('touchmove', onScrubMove, { passive: true });
+      window.addEventListener('mouseup', onScrubEnd);
+      window.addEventListener('touchend', onScrubEnd);
     }
 
     // Volume events
@@ -316,12 +438,37 @@ class YTPlayer {
     }
   }
 
+  showControls() {
+    if (!this.container) return;
+    this.container.classList.remove('hide-controls');
+    this.container.classList.add('show-controls');
+  }
+
+  hideControls() {
+    if (!this.container || !this.video || this.video.paused) return; // Keep visible when paused
+    if (this.isDragging) return; // Keep visible while scrubbing
+    this.container.classList.remove('show-controls');
+    this.container.classList.add('hide-controls');
+    if (this.scrubTooltip) this.scrubTooltip.style.display = 'none';
+  }
+
+  resetControlsTimer(delay = 3000) {
+    if (this.controlsTimer) clearTimeout(this.controlsTimer);
+    if (this.video && !this.video.paused) {
+      this.controlsTimer = setTimeout(() => {
+        this.hideControls();
+      }, delay);
+    }
+  }
+
   onPlay() {
     this.container.classList.remove('paused');
     if (this.playIcon) {
       this.playIcon.className = 'bi bi-pause-fill';
     }
     this.logWatchHistory();
+    this.showControls();
+    this.resetControlsTimer(3000);
   }
 
   onPause() {
@@ -329,6 +476,8 @@ class YTPlayer {
     if (this.playIcon) {
       this.playIcon.className = 'bi bi-play-fill';
     }
+    if (this.controlsTimer) clearTimeout(this.controlsTimer);
+    this.showControls();
   }
 
   onTimeUpdate() {
@@ -473,9 +622,12 @@ class YTPlayer {
   }
 
   seek(e) {
+    if (!this.progressContainer || !this.video || !this.video.duration) return;
     const rect = this.progressContainer.getBoundingClientRect();
-    const pos = (e.clientX - rect.left) / rect.width;
+    const clientX = e.touches ? (e.touches[0] ? e.touches[0].clientX : (e.changedTouches ? e.changedTouches[0].clientX : 0)) : e.clientX;
+    const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     this.video.currentTime = pos * this.video.duration;
+    if (this.progressBar) this.progressBar.style.width = (pos * 100) + '%';
   }
 
   seekTo(seconds) {

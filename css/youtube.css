@@ -439,13 +439,38 @@ html.sidebar-pre-collapsed body .yt-main-content {
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
   padding: 0 1rem 0.5rem 1rem;
   opacity: 0;
-  transition: opacity 0.25s ease;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
   z-index: 20;
 }
 
-.yt-player-container:hover .yt-controls-overlay,
+/* When paused or when explicitly instructed to show controls */
+.yt-player-container.show-controls .yt-controls-overlay,
 .yt-player-container.paused .yt-controls-overlay {
   opacity: 1;
+  pointer-events: auto;
+}
+
+/* Explicit hide controls overrides hover and stays hidden on mobile until tapped */
+.yt-player-container.hide-controls .yt-controls-overlay {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Desktop hover (only on devices with fine mouse pointer, never sticky on mobile touch) */
+@media (hover: hover) and (pointer: fine) {
+  .yt-player-container:hover:not(.hide-controls) .yt-controls-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* Hide mouse cursor when controls are hidden during playback */
+.yt-player-container.hide-controls {
+  cursor: none;
+}
+.yt-player-container.hide-controls * {
+  cursor: none !important;
 }
 
 /* Progress bar / Scrubber */
