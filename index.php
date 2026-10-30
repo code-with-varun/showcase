@@ -23,7 +23,7 @@ if ($activeType === 'docs_zips' || $activeType === 'archive') {
 }
 
 $searchQ = trim($_GET['q'] ?? '');
-$selectedProject = trim($_GET['project'] ?? '');
+$selectedProject = trim($_GET['project'] ?? $_GET['folder'] ?? '');
 
 // Category counts for the navigation switcher
 $isAdmin = (function_exists('isAdminLoggedIn') && isAdminLoggedIn());
@@ -118,6 +118,26 @@ if ($activeType === 'image') {
     });
 }
 
+// If in Videos view, group assets folder/project-wise
+$videosByProject = [];
+if ($activeType === 'video') {
+    foreach ($assetsList as $vid) {
+        $p = !empty($vid['project']) ? trim($vid['project']) : '';
+        if (!$p) {
+            $parts = explode('/', trim(str_replace('\\', '/', $vid['file_path']), '/'));
+            if (count($parts) >= 3 && $parts[1] === 'videos') {
+                $p = ucwords(str_replace(['-', '_'], ' ', $parts[2]));
+            } else {
+                $p = 'General Videos';
+            }
+        }
+        $videosByProject[$p][] = $vid;
+    }
+    uksort($videosByProject, function($a, $b) {
+        return strcasecmp($a, $b);
+    });
+}
+
 $pageTitle = $searchQ ? "Search: {$searchQ}" : match($activeType) {
     'video'    => 'Videos',
     'playlist' => 'Playlists',
@@ -168,16 +188,20 @@ include __DIR__ . '/includes/header.php';
   <?php endif; ?>
 
   <!-- ====================================================================== -->
-  <!-- 1. VIDEOS VIEW -->
+  <!-- 1. VIDEOS VIEW (FOLDER & PROJECT-WISE) -->
   <!-- ====================================================================== -->
   <?php if ($activeType === 'video'): ?>
     <section class="mb-5" id="videosSection">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <h4 class="text-dark mb-0 d-flex align-items-center gap-2">
-          <i class="bi bi-play-btn-fill text-danger"></i>
-          <span>Videos</span>
-          <span class="badge bg-danger text-white small"><?= count($assetsList) ?></span>
-        </h4>
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+          <h4 class="text-dark mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-play-btn-fill text-danger"></i>
+            <span>Videos</span>
+            <span class="badge bg-danger text-white small"><?= count($assetsList) ?> Total</span>
+            <span class="badge bg-secondary-subtle text-dark border small"><?= count($videosByProject) ?> Folders</span>
+          </h4>
+          <small class="text-secondary">Browse video collections folder-wise with instant streaming & preview playback.</small>
+        </div>
       </div>
 
       <!-- Video Sub-Filter Navigation Bar (Zero-Login Watch History & Watch Later) -->
@@ -221,90 +245,163 @@ include __DIR__ . '/includes/header.php';
           <div class="small mt-1">Upload via <a href="<?= $baseUrl ?>/studio.php" class="text-danger">Studio</a> or drop MP4/WebM files into <code>assets/videos/</code> and click Sync.</div>
         </div>
       <?php else: ?>
-        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 g-xl-4" id="videosGridContainer">
-          <?php foreach ($assetsList as $vid): 
-            $vidSlug = $vid['slug'] ?: $vid['id'];
-            $watchUrl  = "{$baseUrl}/watch/{$vidSlug}";
-            $streamUrl = "{$baseUrl}/stream/{$vidSlug}";
-            $thumbUrl  = $vid['thumbnail_path'] ? "{$baseUrl}/" . ltrim($vid['thumbnail_path'], '/') : '';
-            if (!$thumbUrl) {
-                $thumbUrl = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'><rect width='640' height='360' fill='%23e0e0e0'/><circle cx='320' cy='180' r='48' fill='%23cc0000'/><polygon points='310,160 340,180 310,200' fill='%23ffffff'/></svg>";
+
+        <!-- Video Folder Filter Sub-Pills (Mirrors Images Page) -->
+        <div class="d-flex flex-wrap gap-2 mb-4 align-items-center bg-light p-2 rounded-3 border border-light-subtle">
+          <span class="text-secondary small fw-bold ms-1 me-1"><i class="bi bi-folder2-open text-danger me-1"></i>Folders:</span>
+          
+          <button type="button" class="btn btn-sm <?= (empty($selectedProject) || $selectedProject === 'all') ? 'btn-dark active' : 'btn-outline-secondary' ?> rounded-pill px-3 video-project-filter-pill" data-video-project="all" onclick="filterVideoProjectDisplay('all')">
+            <i class="bi bi-collection me-1"></i> All Folders (<?= count($assetsList) ?>)
+          </button>
+
+          <?php foreach ($videosByProject as $pName => $pItems): 
+            $pMeta = getVideoProjectMeta($pName);
+            $isActive = ($selectedProject === $pName);
+          ?>
+            <button type="button" class="btn btn-sm <?= $isActive ? 'btn-dark active' : 'btn-outline-secondary' ?> rounded-pill px-3 video-project-filter-pill" data-video-project="<?= h($pName) ?>" onclick="filterVideoProjectDisplay('<?= addslashes(h($pName)) ?>')">
+              <i class="bi <?= $pMeta['icon'] ?> me-1"></i> <?= h($pName) ?> <span class="badge bg-white text-dark border ms-1"><?= count($pItems) ?></span>
+            </button>
+          <?php endforeach; ?>
+        </div>
+
+        <!-- Video Folder Groups Container -->
+        <div id="videoProjectGroupsContainer">
+          <?php foreach ($videosByProject as $pName => $pItems): 
+            $pSlug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $pName));
+            $pMeta = getVideoProjectMeta($pName);
+            $folderLink = "{$baseUrl}/videos?folder=" . urlencode($pName);
+            
+            $totalDuration = 0;
+            $totalBytes = 0;
+            foreach ($pItems as $pi) {
+                $totalDuration += (int)($pi['duration_seconds'] ?? 0);
+                $totalBytes += (float)($pi['file_size'] ?? 0);
             }
-
-            $embedTag = "<iframe src=\"{$baseUrl}/embed/{$vidSlug}\" width=\"100%\" height=\"450\" frameborder=\"0\" allowfullscreen></iframe>";
-            $shareData = json_encode([
-              'id'          => $vid['id'],
-              'title'       => $vid['title'],
-              'watchUrl'    => $watchUrl,
-              'cdnUrl'      => $streamUrl,
-              'embedTag'    => $embedTag,
-              'markdownTag' => "![" . h($vid['title']) . "]({$streamUrl})"
-            ]);
+            $firstVid = $pItems[0];
+            $firstVidSlug = $firstVid['slug'] ?: $firstVid['id'];
+            $playAllUrl = "{$baseUrl}/watch/{$firstVidSlug}?folder=" . urlencode($pName);
           ?>
-          <?php
-            $vExt = strtolower($vid['extension'] ?? 'mp4');
-            $canWebPreview = in_array($vExt, ['mp4', 'webm', 'm4v']);
-          ?>
-            <div class="col video-card-col" data-video-id="<?= $vid['id'] ?>">
-              <div class="yt-card">
-                <div class="yt-thumb-wrapper position-relative">
-                  <a href="<?= $watchUrl ?>" class="d-block w-100 h-100 text-decoration-none">
-                    <img src="<?= $thumbUrl ?>" alt="<?= h($vid['title']) ?>" loading="lazy">
-                    <?php if ($canWebPreview): ?>
-                      <!-- Hover silent video preview (10s snippet) -->
-                      <video class="hover-preview" src="<?= $streamUrl ?>&preview=1" muted playsinline preload="none"></video>
-                      <span class="yt-type-badge bg-danger">MP4</span>
-                    <?php else: ?>
-                      <span class="yt-type-badge bg-secondary"><?= strtoupper($vExt) ?></span>
-                    <?php endif; ?>
-                    <span class="yt-duration-badge">
-                      <?= $vid['duration_seconds'] > 0 ? formatDuration((int)$vid['duration_seconds']) : formatBytes((float)$vid['file_size']) ?>
-                    </span>
-                  </a>
-
-                  <!-- 1-Click Quick Watch Later Bookmark -->
-                  <button type="button" class="yt-quick-watch-later" data-id="<?= $vid['id'] ?>" title="Save to Watch Later">
-                    <i class="bi bi-clock"></i>
-                  </button>
-
-                  <!-- YouTube Red Resume Progress Bar -->
-                  <div class="yt-thumb-progress" id="progress-bar-<?= $vid['id'] ?>">
-                    <div class="yt-thumb-progress-fill" id="progress-fill-<?= $vid['id'] ?>"></div>
+            <div class="video-project-group-box mb-5" data-video-project-name="<?= h($pName) ?>" id="video-folder-<?= $pSlug ?>">
+              <!-- Folder Header Bar -->
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pb-3 mb-3 border-bottom border-light-subtle">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="project-avatar <?= $pMeta['bg'] ?> d-flex align-items-center justify-content-center rounded-3 shadow-sm" style="width: 48px; height: 48px; font-size: 1.4rem;">
+                    <i class="bi <?= $pMeta['icon'] ?>"></i>
+                  </div>
+                  <div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <h5 class="text-dark fw-bold mb-0"><?= h($pName) ?></h5>
+                      <span class="badge bg-light text-dark border small"><?= count($pItems) ?> <?= count($pItems) === 1 ? 'video' : 'videos' ?></span>
+                      <span class="badge bg-secondary-subtle text-secondary small border"><?= $pMeta['badge'] ?></span>
+                      <?php if ($totalDuration > 0): ?>
+                        <span class="badge bg-danger-subtle text-danger small border"><i class="bi bi-clock me-1"></i><?= formatDuration($totalDuration) ?></span>
+                      <?php else: ?>
+                        <span class="badge bg-light text-secondary small border"><?= formatBytes($totalBytes) ?></span>
+                      <?php endif; ?>
+                    </div>
+                    <small class="text-secondary"><?= $pMeta['desc'] ?></small>
                   </div>
                 </div>
 
-                <div class="yt-card-body">
-                  <div class="yt-author-avatar overflow-hidden">
-                    <img src="<?= $baseUrl ?>/public/Runit%20logo%20pack/app-icon-red.png" alt="Runit" style="width: 100%; height: 100%; object-fit: cover;">
-                  </div>
-                  <div class="yt-card-info">
-                    <a href="<?= $watchUrl ?>" class="text-decoration-none">
-                      <h6 class="yt-card-title" title="<?= h($vid['title']) ?>"><?= h($vid['title']) ?></h6>
-                    </a>
-                    <div class="yt-card-meta">
-                      <div><?= h($vid['category_name'] ?: 'Videos') ?></div>
-                      <div class="d-flex align-items-center justify-content-between mt-1">
-                        <span><?= number_format((int)$vid['views_count']) ?> views • <?= timeAgo($vid['created_at']) ?></span>
-                        
-                        <div class="dropdown">
-                          <button class="btn btn-link text-secondary p-0" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-three-dots-vertical"></i>
-                          </button>
-                          <ul class="dropdown-menu dropdown-menu-end shadow-sm border-light-subtle">
-                            <li><a class="dropdown-item" href="<?= $watchUrl ?>"><i class="bi bi-play-btn me-2"></i>Watch Video</a></li>
-                            <li><a class="dropdown-item toggle-watch-later-menu-item" href="#" data-id="<?= $vid['id'] ?>"><i class="bi bi-clock me-2"></i><span class="wl-label">Save to Watch Later</span></a></li>
-                            <li><a class="dropdown-item" href="#" data-share-asset='<?= htmlspecialchars($shareData, ENT_QUOTES) ?>'><i class="bi bi-share me-2"></i>Share & Embed</a></li>
-                            <li><a class="dropdown-item" href="<?= $streamUrl ?>" download><i class="bi bi-download me-2"></i>Download MP4</a></li>
-                            <?php if (isAdminLoggedIn()): ?>
-                              <li><hr class="dropdown-divider"></li>
-                              <li><a class="dropdown-item text-warning" href="<?= $baseUrl ?>/studio.php?edit=<?= $vid['id'] ?>"><i class="bi bi-pencil-square me-2"></i>Edit in Studio</a></li>
-                            <?php endif; ?>
-                          </ul>
+                <div class="d-flex align-items-center gap-2">
+                  <a href="<?= $playAllUrl ?>" class="btn btn-outline-danger btn-sm rounded-pill px-3" title="Play all videos in this folder continuously">
+                    <i class="bi bi-play-circle-fill me-1"></i> Play All
+                  </a>
+                  <button type="button" class="btn btn-outline-secondary btn-sm copy-btn" data-copy="<?= $folderLink ?>" title="Copy direct link to this folder">
+                    <i class="bi bi-link-45deg me-1"></i> Copy Link
+                  </button>
+                  <button type="button" class="btn btn-outline-dark btn-sm rounded-pill px-3" onclick="filterVideoProjectDisplay('<?= addslashes(h($pName)) ?>')">
+                    <i class="bi bi-funnel me-1"></i> Focus
+                  </button>
+                </div>
+              </div>
+
+              <!-- Folder Videos Grid -->
+              <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 g-xl-4">
+                <?php foreach ($pItems as $vid): 
+                  $vidSlug = $vid['slug'] ?: $vid['id'];
+                  $watchUrl  = "{$baseUrl}/watch/{$vidSlug}?folder=" . urlencode($pName);
+                  $streamUrl = "{$baseUrl}/stream/{$vidSlug}";
+                  $thumbUrl  = $vid['thumbnail_path'] ? "{$baseUrl}/" . ltrim($vid['thumbnail_path'], '/') : '';
+                  if (!$thumbUrl) {
+                      $thumbUrl = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'><rect width='640' height='360' fill='%23e0e0e0'/><circle cx='320' cy='180' r='48' fill='%23cc0000'/><polygon points='310,160 340,180 310,200' fill='%23ffffff'/></svg>";
+                  }
+
+                  $embedTag = "<iframe src=\"{$baseUrl}/embed/{$vidSlug}\" width=\"100%\" height=\"450\" frameborder=\"0\" allowfullscreen></iframe>";
+                  $shareData = json_encode([
+                    'id'          => $vid['id'],
+                    'title'       => $vid['title'],
+                    'watchUrl'    => $watchUrl,
+                    'cdnUrl'      => $streamUrl,
+                    'embedTag'    => $embedTag,
+                    'markdownTag' => "![" . h($vid['title']) . "]({$streamUrl})"
+                  ]);
+                  $vExt = strtolower($vid['extension'] ?? 'mp4');
+                  $canWebPreview = in_array($vExt, ['mp4', 'webm', 'm4v']);
+                ?>
+                  <div class="col video-card-col" data-video-id="<?= $vid['id'] ?>" data-video-project="<?= h($pName) ?>">
+                    <div class="yt-card">
+                      <div class="yt-thumb-wrapper position-relative">
+                        <a href="<?= $watchUrl ?>" class="d-block w-100 h-100 text-decoration-none">
+                          <img src="<?= $thumbUrl ?>" alt="<?= h($vid['title']) ?>" loading="lazy">
+                          <?php if ($canWebPreview): ?>
+                            <!-- Hover silent video preview (10s snippet) -->
+                            <video class="hover-preview" src="<?= $streamUrl ?>&preview=1" muted playsinline preload="none"></video>
+                            <span class="yt-type-badge bg-danger">MP4</span>
+                          <?php else: ?>
+                            <span class="yt-type-badge bg-secondary"><?= strtoupper($vExt) ?></span>
+                          <?php endif; ?>
+                          <span class="yt-duration-badge">
+                            <?= $vid['duration_seconds'] > 0 ? formatDuration((int)$vid['duration_seconds']) : formatBytes((float)$vid['file_size']) ?>
+                          </span>
+                        </a>
+
+                        <!-- 1-Click Quick Watch Later Bookmark -->
+                        <button type="button" class="yt-quick-watch-later" data-id="<?= $vid['id'] ?>" title="Save to Watch Later">
+                          <i class="bi bi-clock"></i>
+                        </button>
+
+                        <!-- YouTube Red Resume Progress Bar -->
+                        <div class="yt-thumb-progress" id="progress-bar-<?= $vid['id'] ?>">
+                          <div class="yt-thumb-progress-fill" id="progress-fill-<?= $vid['id'] ?>"></div>
+                        </div>
+                      </div>
+
+                      <div class="yt-card-body">
+                        <div class="yt-author-avatar overflow-hidden">
+                          <img src="<?= $baseUrl ?>/public/Runit%20logo%20pack/app-icon-red.png" alt="Runit" style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                        <div class="yt-card-info">
+                          <a href="<?= $watchUrl ?>" class="text-decoration-none">
+                            <h6 class="yt-card-title" title="<?= h($vid['title']) ?>"><?= h($vid['title']) ?></h6>
+                          </a>
+                          <div class="yt-card-meta">
+                            <div><?= h($pName) ?></div>
+                            <div class="d-flex align-items-center justify-content-between mt-1">
+                              <span><?= number_format((int)$vid['views_count']) ?> views • <?= timeAgo($vid['created_at']) ?></span>
+                              
+                              <div class="dropdown">
+                                <button class="btn btn-link text-secondary p-0" data-bs-toggle="dropdown" aria-expanded="false">
+                                  <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-light-subtle">
+                                  <li><a class="dropdown-item" href="<?= $watchUrl ?>"><i class="bi bi-play-btn me-2"></i>Watch Video</a></li>
+                                  <li><a class="dropdown-item toggle-watch-later-menu-item" href="#" data-id="<?= $vid['id'] ?>"><i class="bi bi-clock me-2"></i><span class="wl-label">Save to Watch Later</span></a></li>
+                                  <li><a class="dropdown-item" href="#" data-share-asset='<?= htmlspecialchars($shareData, ENT_QUOTES) ?>'><i class="bi bi-share me-2"></i>Share & Embed</a></li>
+                                  <li><a class="dropdown-item" href="<?= $streamUrl ?>" download><i class="bi bi-download me-2"></i>Download MP4</a></li>
+                                  <?php if (isAdminLoggedIn()): ?>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-warning" href="<?= $baseUrl ?>/studio.php?edit=<?= $vid['id'] ?>"><i class="bi bi-pencil-square me-2"></i>Edit in Studio</a></li>
+                                  <?php endif; ?>
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                <?php endforeach; ?>
               </div>
             </div>
           <?php endforeach; ?>
@@ -928,12 +1025,72 @@ function filterProjectDisplay(targetProject) {
   window.history.replaceState({}, '', url.toString());
 }
 
+// Interactive Video Folder / Project Filter
+let currentVideoFolder = 'all';
+
+function filterVideoProjectDisplay(targetFolder) {
+  currentVideoFolder = targetFolder;
+
+  // Update filter pills
+  document.querySelectorAll('.video-project-filter-pill').forEach(btn => {
+    const p = btn.getAttribute('data-video-project');
+    if (p === targetFolder) {
+      btn.classList.add('btn-dark', 'active');
+      btn.classList.remove('btn-outline-secondary');
+    } else {
+      btn.classList.remove('btn-dark', 'active');
+      btn.classList.add('btn-outline-secondary');
+    }
+  });
+
+  // Apply folder box visibility
+  updateVideoFolderVisibility();
+
+  // Update URL without reload
+  const url = new URL(window.location.href);
+  if (targetFolder === 'all') {
+    url.searchParams.delete('folder');
+    url.searchParams.delete('project');
+  } else {
+    url.searchParams.set('folder', targetFolder);
+  }
+  window.history.replaceState({}, '', url.toString());
+}
+
+function updateVideoFolderVisibility() {
+  document.querySelectorAll('.video-project-group-box').forEach(box => {
+    const boxProj = box.getAttribute('data-video-project-name');
+    const matchesFolder = (currentVideoFolder === 'all' || boxProj === currentVideoFolder);
+
+    if (!matchesFolder) {
+      box.style.display = 'none';
+      return;
+    }
+
+    // If subfilter (history or later) is active, check if there are visible cards inside
+    if (typeof currentSubfilter !== 'undefined' && currentSubfilter !== 'all') {
+      let visibleInBox = 0;
+      box.querySelectorAll('.video-card-col').forEach(c => {
+        if (c.style.display !== 'none') visibleInBox++;
+      });
+      box.style.display = (visibleInBox > 0) ? 'block' : 'none';
+    } else {
+      box.style.display = 'block';
+    }
+  });
+}
+
 // Check on load if specific project is in URL
 window.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const initialProject = urlParams.get('project');
+  const initialFolder = urlParams.get('folder') || urlParams.get('project');
+  
   if (initialProject && initialProject !== 'all') {
     filterProjectDisplay(initialProject);
+  }
+  if (initialFolder && initialFolder !== 'all') {
+    filterVideoProjectDisplay(initialFolder);
   }
 });
 
@@ -1105,6 +1262,11 @@ function applySubfilter(filter) {
       clearBtn.classList.remove('d-none');
       if (clearText) clearText.textContent = 'Clear Watch Later';
     }
+  }
+
+  // Update folder groups visibility based on current subfilter state
+  if (typeof updateVideoFolderVisibility === 'function') {
+    updateVideoFolderVisibility();
   }
 }
 

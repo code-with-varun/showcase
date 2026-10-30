@@ -105,6 +105,11 @@ $activePlaylist = null;
 $playlistVideos = [];
 $playlistIndex = -1;
 
+$folderParam = trim($_GET['folder'] ?? $_GET['project'] ?? '');
+$activeFolder = null;
+$folderVideos = [];
+$folderIndex = -1;
+
 if (!empty($playlistId)) {
     $plStmt = $pdo->prepare("SELECT * FROM playlists WHERE id = :id OR slug = :slug LIMIT 1");
     $plStmt->execute([':id' => $playlistId, ':slug' => $playlistId]);
@@ -112,7 +117,7 @@ if (!empty($playlistId)) {
 
     if ($activePlaylist) {
         $piStmt = $pdo->prepare("
-            SELECT a.id, a.title, a.duration_seconds, a.thumbnail_path, pi.position 
+            SELECT a.id, a.slug, a.title, a.duration_seconds, a.thumbnail_path, pi.position 
             FROM playlist_items pi 
             JOIN assets a ON pi.asset_id = a.id 
             WHERE pi.playlist_id = :pid 
@@ -155,6 +160,60 @@ if (!empty($playlistId)) {
                 'thumbnail_path' => $firstPv['thumbnail_path'],
             ];
             $nextVideoUrl = "{$baseUrl}/watch/" . ($firstPv['slug'] ?: $firstPv['id']) . "?list=" . ($activePlaylist['slug'] ?: $activePlaylist['id']) . "&autoplay=1";
+        }
+    }
+} elseif (!empty($folderParam)) {
+    // If playlist is not set, but a folder/project parameter is passed -> load folder video queue
+    $fVisFilter = $isAdmin ? "1=1" : "a.visibility = 2";
+    $fStmt = $pdo->prepare("
+        SELECT a.id, a.slug, a.title, a.duration_seconds, a.thumbnail_path, a.file_size, a.project
+        FROM assets a
+        WHERE a.asset_type = 'video' 
+          AND (a.project = :p OR a.file_path LIKE :plike) 
+          AND $fVisFilter
+        ORDER BY a.created_at ASC, a.title ASC
+    ");
+    $fStmt->execute([
+        ':p' => $folderParam,
+        ':plike' => "%/{$folderParam}/%"
+    ]);
+    $folderVideos = $fStmt->fetchAll();
+
+    if (!empty($folderVideos)) {
+        $activeFolder = $folderParam;
+        foreach ($folderVideos as $idx => $fv) {
+            if ($fv['id'] === $asset['id']) {
+                $folderIndex = $idx;
+                break;
+            }
+        }
+
+        // Target previous and next video in folder
+        $prevVideoUrl = '';
+        if ($folderIndex > 0 && isset($folderVideos[$folderIndex - 1])) {
+            $prevFv = $folderVideos[$folderIndex - 1];
+            $prevVideoUrl = "{$baseUrl}/watch/" . ($prevFv['slug'] ?: $prevFv['id']) . "?folder=" . urlencode($activeFolder);
+        }
+
+        if ($folderIndex !== -1 && isset($folderVideos[$folderIndex + 1])) {
+            $nextFv = $folderVideos[$folderIndex + 1];
+            $nextVideo = [
+                'id' => $nextFv['id'],
+                'title' => $nextFv['title'],
+                'duration_seconds' => $nextFv['duration_seconds'],
+                'thumbnail_path' => $nextFv['thumbnail_path'],
+            ];
+            $nextVideoUrl = "{$baseUrl}/watch/" . ($nextFv['slug'] ?: $nextFv['id']) . "?folder=" . urlencode($activeFolder) . "&autoplay=1";
+        } elseif (!empty($folderVideos)) {
+            // Loop back to start of folder
+            $firstFv = $folderVideos[0];
+            $nextVideo = [
+                'id' => $firstFv['id'],
+                'title' => $firstFv['title'],
+                'duration_seconds' => $firstFv['duration_seconds'],
+                'thumbnail_path' => $firstFv['thumbnail_path'],
+            ];
+            $nextVideoUrl = "{$baseUrl}/watch/" . ($firstFv['slug'] ?: $firstFv['id']) . "?folder=" . urlencode($activeFolder) . "&autoplay=1";
         }
     }
 }
@@ -563,6 +622,55 @@ $visInfo = getVisibilityLabel($visibility);
                   <div class="yt-upnext-info min-w-0">
                     <div class="yt-upnext-title <?= $isCurrent ? 'fw-bold text-danger' : 'text-dark' ?>" title="<?= h($pItem['title']) ?>">
                       <?= h($pItem['title']) ?>
+                    </div>
+                  </div>
+                </a>
+              <?php endforeach; ?>
+            </div>
+          </div>
+        <?php elseif ($activeFolder && !empty($folderVideos)): ?>
+          <!-- YouTube Folder Queue Card -->
+          <div class="card border-danger border-opacity-25 shadow-sm mb-4 bg-white overflow-hidden">
+            <div class="card-header bg-danger text-white py-2 px-3 d-flex align-items-center justify-content-between">
+              <div class="min-w-0">
+                <div class="fw-bold text-truncate small d-flex align-items-center gap-1">
+                  <i class="bi bi-folder2-open"></i>
+                  <span>Folder: <?= h($activeFolder) ?></span>
+                </div>
+                <div class="opacity-75" style="font-size: 0.72rem;">
+                  <?= ($folderIndex !== -1 ? ($folderIndex + 1) : 1) ?> / <?= count($folderVideos) ?> videos
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-1">
+                <a href="<?= $baseUrl ?>/videos?folder=<?= urlencode($activeFolder) ?>" class="btn btn-sm btn-outline-light rounded-pill px-2 py-0" title="View Full Folder" style="font-size: 0.72rem;">
+                  <i class="bi bi-box-arrow-up-right me-1"></i>Folder
+                </a>
+                <span class="badge bg-white text-danger small">Folder Queue</span>
+              </div>
+            </div>
+            <div class="playlist-queue-scroll p-2 d-flex flex-column gap-1" style="max-height: 360px; overflow-y: auto;">
+              <?php foreach ($folderVideos as $fIdx => $fItem): 
+                $isCurrent = ($fItem['id'] === $asset['id']);
+                $itemUrl = "{$baseUrl}/watch/" . ($fItem['slug'] ?: $fItem['id']) . "?folder=" . urlencode($activeFolder);
+                $itemThumb = $fItem['thumbnail_path'] ? "{$baseUrl}/" . ltrim($fItem['thumbnail_path'], '/') : "{$baseUrl}/assets/thumbnails/thumb-flowcv.png";
+              ?>
+                <a href="<?= $itemUrl ?>" class="yt-upnext-card p-1 rounded text-decoration-none <?= $isCurrent ? 'bg-danger-subtle border border-danger-subtle' : '' ?>">
+                  <div class="d-flex align-items-center justify-content-center text-secondary small px-1 font-monospace" style="min-width: 22px;">
+                    <?php if ($isCurrent): ?>
+                      <i class="bi bi-play-fill text-danger fs-6"></i>
+                    <?php else: ?>
+                      <?= $fIdx + 1 ?>
+                    <?php endif; ?>
+                  </div>
+                  <div class="yt-upnext-thumb" style="width: 100px; height: 56px; flex-shrink: 0;">
+                    <img src="<?= $itemThumb ?>" alt="<?= h($fItem['title']) ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                    <span class="yt-duration-badge" style="font-size: 0.65rem; padding: 1px 3px;">
+                      <?= formatDuration((int)$fItem['duration_seconds']) ?>
+                    </span>
+                  </div>
+                  <div class="yt-upnext-info min-w-0">
+                    <div class="yt-upnext-title <?= $isCurrent ? 'fw-bold text-danger' : 'text-dark' ?>" title="<?= h($fItem['title']) ?>">
+                      <?= h($fItem['title']) ?>
                     </div>
                   </div>
                 </a>

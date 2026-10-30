@@ -177,3 +177,56 @@ function getVisibilityLabel(int $visibility): array {
         default             => ['label' => 'Public',   'badge' => 'bg-success-subtle text-success', 'icon' => 'bi-globe2'],
     };
 }
+
+/**
+ * Get metadata styling, icons, and descriptions for video project/folder sections
+ */
+function getVideoProjectMeta(string $pName): array {
+    $lower = strtolower($pName);
+    if (str_contains($lower, 'remix')) {
+        return [
+            'icon'  => 'bi-disc-fill text-danger',
+            'badge' => 'Music & Edits',
+            'bg'    => 'bg-danger-subtle',
+            'desc'  => 'High-energy music video remixes & beat-synced edits'
+        ];
+    }
+    if (str_contains($lower, 'chalkboard')) {
+        return [
+            'icon'  => 'bi-mortarboard-fill text-primary',
+            'badge' => 'Tutorials & Guides',
+            'bg'    => 'bg-primary-subtle',
+            'desc'  => 'Educational & instructional screen tutorials'
+        ];
+    }
+    if (str_contains($lower, 'lavish')) {
+        return [
+            'icon'  => 'bi-mic-fill text-warning-emphasis',
+            'badge' => 'Interviews & Shows',
+            'bg'    => 'bg-warning-subtle',
+            'desc'  => 'Interviews, talk shows & creative spotlight features'
+        ];
+    }
+    if (str_contains($lower, 'short')) {
+        return [
+            'icon'  => 'bi-film text-info-emphasis',
+            'badge' => 'Cinematic Shorts',
+            'bg'    => 'bg-info-subtle',
+            'desc'  => 'Original short cinematic films & creative narratives'
+        ];
+    }
+    if (str_contains($lower, 'varun') || str_contains($lower, 'kiruthiga') || str_contains($lower, 'wedding')) {
+        return [
+            'icon'  => 'bi-heart-fill text-danger',
+            'badge' => 'Cinematic Stories',
+            'bg'    => 'bg-danger-subtle',
+            'desc'  => 'Wedding & special event cinematic story series'
+        ];
+    }
+    return [
+        'icon'  => 'bi-folder2-open text-danger',
+        'badge' => 'Video Collection',
+        'bg'    => 'bg-light',
+        'desc'  => 'Video collection & media assets'
+    ];
+}
