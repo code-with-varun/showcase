@@ -60,6 +60,7 @@ $filesToDeploy = [
     'includes/footer.php',
     'includes/SyncManager.php',
     'api/playlists.php',
+    'api/folder-visibility.php',
     'api/upload.php',
     'api/update-asset.php',
     'api/delete-asset.php',

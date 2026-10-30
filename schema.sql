@@ -108,6 +108,15 @@ CREATE TABLE IF NOT EXISTS `playlist_items` (
   INDEX `idx_pi_position` (`position`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Folder-Level Visibility Settings
+CREATE TABLE IF NOT EXISTS `folder_visibility` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `folder_path` VARCHAR(255) NOT NULL UNIQUE,
+  `visibility` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '0=private, 1=unlisted, 2=public',
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_fv_path` (`folder_path`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Initial default categories
 INSERT INTO `categories` (`name`, `slug`, `icon`) VALUES
 ('Videos', 'videos', 'bi-camera-video'),

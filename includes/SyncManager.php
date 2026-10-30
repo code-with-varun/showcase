@@ -33,6 +33,7 @@ class SyncManager {
 
         // Fetch all categories mapped by slug
         $categories = $this->loadCategories();
+        $folderRules = $this->loadFolderRules();
 
         // 1. Scan filesystem
         $filesOnDisk = $this->scanDirectory($this->assetsDir);
@@ -91,6 +92,9 @@ class SyncManager {
                 $mimeType = $this->detectMimeType($file['full_path'], $ext);
                 $thumbnailPath = $this->generateThumbnailPath($assetType, $relativePath, $id, $file['full_path']);
 
+                $folderVis = $this->resolveFolderVisibility($relativePath, $folderRules);
+                $isPublic  = ($folderVis >= 1) ? 1 : 0;
+
                 $insertStmt = $this->pdo->prepare("
                     INSERT INTO assets (
                         id, title, slug, description, asset_type, category_id, project,
@@ -99,7 +103,7 @@ class SyncManager {
                     ) VALUES (
                         :id, :title, :slug, :desc, :type, :cat_id, :project,
                         :path, :filename, :size, :mime, :ext,
-                        :thumb, 'ftp_sync', 1, 1, NOW(), NOW()
+                        :thumb, 'ftp_sync', :vis, :pub, NOW(), NOW()
                     )
                 ");
 
@@ -117,6 +121,8 @@ class SyncManager {
                     ':mime'     => $mimeType,
                     ':ext'      => $ext,
                     ':thumb'    => $thumbnailPath,
+                    ':vis'      => $folderVis,
+                    ':pub'      => $isPublic,
                 ]);
 
                 // Add default tags
@@ -397,5 +403,38 @@ class SyncManager {
                 $stmt->execute([':id' => $assetId, ':tag' => $tag]);
             }
         }
+    }
+
+    /**
+     * Load persistent folder visibility rules
+     */
+    public function loadFolderRules(): array {
+        try {
+            $stmt = $this->pdo->query("SELECT folder_path, visibility FROM folder_visibility");
+            $rules = [];
+            while ($r = $stmt->fetch()) {
+                $rules[rtrim(str_replace('\\', '/', $r['folder_path']), '/')] = (int)$r['visibility'];
+            }
+            return $rules;
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Resolve folder visibility for a relative file path by checking folder_visibility rules
+     */
+    public function resolveFolderVisibility(string $relativePath, array $folderRules): int {
+        $normalized = rtrim(str_replace('\\', '/', $relativePath), '/');
+        $dir = dirname($normalized);
+        while ($dir !== '.' && $dir !== '' && $dir !== '/' && $dir !== '\\') {
+            if (isset($folderRules[$dir])) {
+                return $folderRules[$dir];
+            }
+            $parent = dirname($dir);
+            if ($parent === $dir) break;
+            $dir = $parent;
+        }
+        return 1; // Default to 1 (Unlisted)
     }
 }
