@@ -279,7 +279,7 @@ include __DIR__ . '/includes/header.php';
             }
             $firstVid = $pItems[0];
             $firstVidSlug = $firstVid['slug'] ?: $firstVid['id'];
-            $playAllUrl = "{$baseUrl}/watch/{$firstVidSlug}?folder=" . urlencode($pName);
+            $playAllUrl = "{$baseUrl}/watch/{$firstVidSlug}";
           ?>
             <div class="video-project-group-box mb-5" data-video-project-name="<?= h($pName) ?>" id="video-folder-<?= $pSlug ?>">
               <!-- Folder Header Bar -->
@@ -320,7 +320,7 @@ include __DIR__ . '/includes/header.php';
               <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 g-xl-4">
                 <?php foreach ($pItems as $vid): 
                   $vidSlug = $vid['slug'] ?: $vid['id'];
-                  $watchUrl  = "{$baseUrl}/watch/{$vidSlug}?folder=" . urlencode($pName);
+                  $watchUrl  = "{$baseUrl}/watch/{$vidSlug}";
                   $streamUrl = "{$baseUrl}/stream/{$vidSlug}";
                   $thumbUrl  = $vid['thumbnail_path'] ? "{$baseUrl}/" . ltrim($vid['thumbnail_path'], '/') : '';
                   if (!$thumbUrl) {

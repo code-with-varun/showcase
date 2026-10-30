@@ -166,8 +166,9 @@ class YTPlayer {
       }
     }
 
-    // Handle Reliable Autoplay
-    if (params.get('autoplay') === '1' || this.video.hasAttribute('autoplay')) {
+    // Handle Instant Autoplay on watch page (with silent fallback if browser requires user audio unlock)
+    const allowAutoplay = params.get('autoplay') !== '0';
+    if (allowAutoplay || this.video.hasAttribute('autoplay')) {
       const startPlayback = () => {
         const playPromise = this.video.play();
         if (playPromise !== undefined) {
@@ -187,6 +188,7 @@ class YTPlayer {
       } else {
         this.video.addEventListener('loadeddata', startPlayback, { once: true });
         this.video.addEventListener('canplay', startPlayback, { once: true });
+        this.video.addEventListener('loadedmetadata', startPlayback, { once: true });
       }
     }
 

@@ -82,43 +82,61 @@ $tags = $tagStmt->fetchAll(PDO::FETCH_COLUMN);
 
 // Fetch Up Next / Recommended List - only public assets for guests
 $visFilter = $isAdmin ? 'a.id != :id' : 'a.id != :id AND a.visibility = 2';
-if ($isVideo) {
-    $relStmt = $pdo->prepare("
-        SELECT a.*, c.name AS category_name 
-        FROM assets a 
-        LEFT JOIN categories c ON a.category_id = c.id 
-        WHERE $visFilter AND a.asset_type = 'video'
-        ORDER BY a.created_at DESC 
-        LIMIT 15
-    ");
-    $relStmt->execute([':id' => $asset['id']]);
-    $related = $relStmt->fetchAll();
-} else {
-    $relStmt = $pdo->prepare("
-        SELECT a.*, c.name AS category_name 
-        FROM assets a 
-        LEFT JOIN categories c ON a.category_id = c.id 
-        WHERE $visFilter AND a.asset_type = :type 
-        ORDER BY a.created_at DESC 
-        LIMIT 15
-    ");
-    $relStmt->execute([':id' => $asset['id'], ':type' => $asset['asset_type']]);
-    $related = $relStmt->fetchAll();
+
+// Detect parent project/folder
+$videoProject = !empty($asset['project']) ? trim($asset['project']) : trim($_GET['folder'] ?? $_GET['project'] ?? '');
+if ($videoProject === '') {
+    $parts = explode('/', trim(str_replace('\\', '/', $asset['file_path']), '/'));
+    if (count($parts) >= 3 && $parts[1] === 'videos') {
+        $videoProject = ucwords(str_replace(['-', '_'], ' ', $parts[2]));
+    }
 }
 
+// Fetch related videos: prioritize videos from the same folder/series first, followed by others
+$folderVideos = [];
+$otherVideos = [];
+
+if ($isVideo && $videoProject !== '') {
+    $fStmt = $pdo->prepare("
+        SELECT a.*, c.name AS category_name, 1 AS is_same_folder
+        FROM assets a 
+        LEFT JOIN categories c ON a.category_id = c.id 
+        WHERE $visFilter AND a.asset_type = 'video' AND (a.project = :proj OR a.file_path LIKE :plike)
+        ORDER BY a.created_at ASC, a.title ASC
+    ");
+    $fStmt->execute([
+        ':id'    => $asset['id'],
+        ':proj'  => $videoProject,
+        ':plike' => "%/{$videoProject}/%"
+    ]);
+    $folderVideos = $fStmt->fetchAll();
+}
+
+$excludeIds = array_merge([$asset['id']], array_column($folderVideos, 'id'));
+$placeholders = implode(',', array_fill(0, count($excludeIds), '?'));
+$otherSql = "
+    SELECT a.*, c.name AS category_name, 0 AS is_same_folder
+    FROM assets a 
+    LEFT JOIN categories c ON a.category_id = c.id 
+    WHERE a.id NOT IN ($placeholders) AND a.asset_type = " . ($isVideo ? "'video'" : ":atype") . " " . ($isAdmin ? '' : 'AND a.visibility = 2') . "
+    ORDER BY a.created_at DESC 
+    LIMIT " . max(6, 18 - count($folderVideos));
+$otherStmt = $pdo->prepare($otherSql);
+$otherParams = $excludeIds;
+if (!$isVideo) $otherParams[] = $asset['asset_type'];
+$otherStmt->execute($otherParams);
+$otherVideos = $otherStmt->fetchAll();
+
+$related = array_merge($folderVideos, $otherVideos);
+
 $nextVideo = !empty($related) ? $related[0] : null;
-$nextVideoUrl = $nextVideo ? "{$baseUrl}/watch.php?v={$nextVideo['id']}&autoplay=1" : '';
+$nextVideoUrl = $nextVideo ? "{$baseUrl}/watch/" . ($nextVideo['slug'] ?: $nextVideo['id']) : '';
 
 // Check for active playlist in URL
 $playlistId = trim($_GET['list'] ?? '');
 $activePlaylist = null;
 $playlistVideos = [];
 $playlistIndex = -1;
-
-$folderParam = trim($_GET['folder'] ?? $_GET['project'] ?? '');
-$activeFolder = null;
-$folderVideos = [];
-$folderIndex = -1;
 
 if (!empty($playlistId)) {
     $plStmt = $pdo->prepare("SELECT * FROM playlists WHERE id = :id OR slug = :slug LIMIT 1");
@@ -155,6 +173,7 @@ if (!empty($playlistId)) {
             $nextPv = $playlistVideos[$playlistIndex + 1];
             $nextVideo = [
                 'id' => $nextPv['id'],
+                'slug' => $nextPv['slug'],
                 'title' => $nextPv['title'],
                 'duration_seconds' => $nextPv['duration_seconds'],
                 'thumbnail_path' => $nextPv['thumbnail_path'],
@@ -165,65 +184,12 @@ if (!empty($playlistId)) {
             $firstPv = $playlistVideos[0];
             $nextVideo = [
                 'id' => $firstPv['id'],
+                'slug' => $firstPv['slug'],
                 'title' => $firstPv['title'],
                 'duration_seconds' => $firstPv['duration_seconds'],
                 'thumbnail_path' => $firstPv['thumbnail_path'],
             ];
             $nextVideoUrl = "{$baseUrl}/watch/" . ($firstPv['slug'] ?: $firstPv['id']) . "?list=" . ($activePlaylist['slug'] ?: $activePlaylist['id']) . "&autoplay=1";
-        }
-    }
-} elseif (!empty($folderParam)) {
-    // If playlist is not set, but a folder/project parameter is passed -> load folder video queue
-    $fVisFilter = $isAdmin ? "1=1" : "a.visibility = 2";
-    $fStmt = $pdo->prepare("
-        SELECT a.id, a.slug, a.title, a.duration_seconds, a.thumbnail_path, a.file_size, a.project
-        FROM assets a
-        WHERE a.asset_type = 'video' 
-          AND (a.project = :p OR a.file_path LIKE :plike) 
-          AND $fVisFilter
-        ORDER BY a.created_at ASC, a.title ASC
-    ");
-    $fStmt->execute([
-        ':p' => $folderParam,
-        ':plike' => "%/{$folderParam}/%"
-    ]);
-    $folderVideos = $fStmt->fetchAll();
-
-    if (!empty($folderVideos)) {
-        $activeFolder = $folderParam;
-        foreach ($folderVideos as $idx => $fv) {
-            if ($fv['id'] === $asset['id']) {
-                $folderIndex = $idx;
-                break;
-            }
-        }
-
-        // Target previous and next video in folder
-        $prevVideoUrl = '';
-        if ($folderIndex > 0 && isset($folderVideos[$folderIndex - 1])) {
-            $prevFv = $folderVideos[$folderIndex - 1];
-            $prevVideoUrl = "{$baseUrl}/watch/" . ($prevFv['slug'] ?: $prevFv['id']) . "?folder=" . urlencode($activeFolder);
-        }
-
-        if ($folderIndex !== -1 && isset($folderVideos[$folderIndex + 1])) {
-            $nextFv = $folderVideos[$folderIndex + 1];
-            $nextVideo = [
-                'id' => $nextFv['id'],
-                'title' => $nextFv['title'],
-                'duration_seconds' => $nextFv['duration_seconds'],
-                'thumbnail_path' => $nextFv['thumbnail_path'],
-            ];
-            $nextVideoUrl = "{$baseUrl}/watch/" . ($nextFv['slug'] ?: $nextFv['id']) . "?folder=" . urlencode($activeFolder) . "&autoplay=1";
-        } elseif (!empty($folderVideos)) {
-            // Loop back to start of folder
-            $firstFv = $folderVideos[0];
-            $nextVideo = [
-                'id' => $firstFv['id'],
-                'title' => $firstFv['title'],
-                'duration_seconds' => $firstFv['duration_seconds'],
-                'thumbnail_path' => $firstFv['thumbnail_path'],
-            ];
-            $nextVideoUrl = "{$baseUrl}/watch/" . ($firstFv['slug'] ?: $firstFv['id']) . "?folder=" . urlencode($activeFolder) . "&autoplay=1";
         }
     }
 }
@@ -292,8 +258,9 @@ $visInfo = getVisibilityLabel($visibility);
             <?php 
               // Direct static streaming bypass: connect directly to Apache / Hostinger CDN for instant buffering
               $playerVideoSrc = ($isWebNativeVideo && $visibility >= 1) ? $rawCdnUrl : $streamUrl;
+              $autoPlayAttr = (isset($_GET['autoplay']) && $_GET['autoplay'] === '0') ? '' : 'autoplay';
             ?>
-            <video id="mainVideo" src="<?= $playerVideoSrc ?>" poster="<?= $asset['thumbnail_path'] ? $baseUrl . '/' . ltrim($asset['thumbnail_path'], '/') : '' ?>" playsinline preload="auto" <?= (!empty($_GET['autoplay']) && $_GET['autoplay'] == '1') ? 'autoplay' : '' ?>></video>
+            <video id="mainVideo" src="<?= $playerVideoSrc ?>" poster="<?= $asset['thumbnail_path'] ? $baseUrl . '/' . ltrim($asset['thumbnail_path'], '/') : '' ?>" playsinline preload="auto" <?= $autoPlayAttr ?>></video>
             
             <!-- Seek Ripple Overlays (for double-click and button clicks) -->
             <div class="yt-seek-overlay yt-seek-overlay-left" id="seekOverlayLeft" style="display: none;">
@@ -642,55 +609,6 @@ $visInfo = getVisibilityLabel($visibility);
               <?php endforeach; ?>
             </div>
           </div>
-        <?php elseif ($activeFolder && !empty($folderVideos)): ?>
-          <!-- YouTube Folder Queue Card -->
-          <div class="card border-danger border-opacity-25 shadow-sm mb-4 bg-white overflow-hidden">
-            <div class="card-header bg-danger text-white py-2 px-3 d-flex align-items-center justify-content-between">
-              <div class="min-w-0">
-                <div class="fw-bold text-truncate small d-flex align-items-center gap-1">
-                  <i class="bi bi-folder2-open"></i>
-                  <span>Folder: <?= h($activeFolder) ?></span>
-                </div>
-                <div class="opacity-75" style="font-size: 0.72rem;">
-                  <?= ($folderIndex !== -1 ? ($folderIndex + 1) : 1) ?> / <?= count($folderVideos) ?> videos
-                </div>
-              </div>
-              <div class="d-flex align-items-center gap-1">
-                <a href="<?= $baseUrl ?>/videos?folder=<?= urlencode($activeFolder) ?>" class="btn btn-sm btn-outline-light rounded-pill px-2 py-0" title="View Full Folder" style="font-size: 0.72rem;">
-                  <i class="bi bi-box-arrow-up-right me-1"></i>Folder
-                </a>
-                <span class="badge bg-white text-danger small">Folder Queue</span>
-              </div>
-            </div>
-            <div class="playlist-queue-scroll p-2 d-flex flex-column gap-1" style="max-height: 360px; overflow-y: auto;">
-              <?php foreach ($folderVideos as $fIdx => $fItem): 
-                $isCurrent = ($fItem['id'] === $asset['id']);
-                $itemUrl = "{$baseUrl}/watch/" . ($fItem['slug'] ?: $fItem['id']) . "?folder=" . urlencode($activeFolder);
-                $itemThumb = $fItem['thumbnail_path'] ? "{$baseUrl}/" . ltrim($fItem['thumbnail_path'], '/') : "{$baseUrl}/assets/thumbnails/thumb-flowcv.png";
-              ?>
-                <a href="<?= $itemUrl ?>" class="yt-upnext-card p-1 rounded text-decoration-none <?= $isCurrent ? 'bg-danger-subtle border border-danger-subtle' : '' ?>">
-                  <div class="d-flex align-items-center justify-content-center text-secondary small px-1 font-monospace" style="min-width: 22px;">
-                    <?php if ($isCurrent): ?>
-                      <i class="bi bi-play-fill text-danger fs-6"></i>
-                    <?php else: ?>
-                      <?= $fIdx + 1 ?>
-                    <?php endif; ?>
-                  </div>
-                  <div class="yt-upnext-thumb" style="width: 100px; height: 56px; flex-shrink: 0;">
-                    <img src="<?= $itemThumb ?>" alt="<?= h($fItem['title']) ?>" style="width: 100%; height: 100%; object-fit: cover;">
-                    <span class="yt-duration-badge" style="font-size: 0.65rem; padding: 1px 3px;">
-                      <?= formatDuration((int)$fItem['duration_seconds']) ?>
-                    </span>
-                  </div>
-                  <div class="yt-upnext-info min-w-0">
-                    <div class="yt-upnext-title <?= $isCurrent ? 'fw-bold text-danger' : 'text-dark' ?>" title="<?= h($fItem['title']) ?>">
-                      <?= h($fItem['title']) ?>
-                    </div>
-                  </div>
-                </a>
-              <?php endforeach; ?>
-            </div>
-          </div>
         <?php endif; ?>
 
         <!-- Autoplay Switch -->
@@ -704,7 +622,7 @@ $visInfo = getVisibilityLabel($visibility);
           </div>
         </div>
 
-        <!-- Recommended Videos List -->
+        <!-- Recommended / Series Videos List -->
         <div class="d-flex flex-column gap-2" id="upNextList">
           <?php if (empty($related)): ?>
             <div class="text-secondary small text-center p-3 border rounded bg-white">
@@ -713,21 +631,30 @@ $visInfo = getVisibilityLabel($visibility);
             </div>
           <?php else: ?>
             <?php foreach ($related as $index => $rel): 
-              $relWatchUrl = "{$baseUrl}/watch.php?v={$rel['id']}";
+              $relSlug = $rel['slug'] ?: $rel['id'];
+              $relWatchUrl = "{$baseUrl}/watch/{$relSlug}";
               $relThumb = $rel['thumbnail_path'] ? "{$baseUrl}/" . ltrim($rel['thumbnail_path'], '/') : "{$baseUrl}/assets/thumbnails/thumb-flowcv.png";
+              $isSameFolder = !empty($rel['is_same_folder']);
             ?>
-              <a href="<?= $relWatchUrl ?>" class="yt-upnext-card">
+              <a href="<?= $relWatchUrl ?>" class="yt-upnext-card <?= $isSameFolder ? 'border border-danger-subtle bg-light' : '' ?>">
                 <div class="yt-upnext-thumb">
                   <img src="<?= $relThumb ?>" alt="<?= h($rel['title']) ?>" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy">
                   <span class="yt-duration-badge" style="font-size: 0.7rem; padding: 1px 4px;">
                     <?= formatDuration((int)$rel['duration_seconds']) ?>
                   </span>
                 </div>
-                <div class="yt-upnext-info">
+                <div class="yt-upnext-info min-w-0">
+                  <?php if ($isSameFolder && $videoProject): ?>
+                    <div class="mb-1">
+                      <span class="badge bg-danger-subtle text-danger" style="font-size: 0.65rem; font-weight: 500;">
+                        <i class="bi bi-folder2-open me-1"></i><?= h($videoProject) ?>
+                      </span>
+                    </div>
+                  <?php endif; ?>
                   <div class="yt-upnext-title" title="<?= h($rel['title']) ?>">
                     <?= h($rel['title']) ?>
                   </div>
-                  <div class="yt-upnext-meta">
+                  <div class="yt-upnext-meta mt-1">
                     <?= number_format((int)$rel['views_count']) ?> views • <?= timeAgo($rel['created_at']) ?>
                   </div>
                 </div>
@@ -751,10 +678,11 @@ $visInfo = getVisibilityLabel($visibility);
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <label class="form-label small fw-bold text-secondary">Direct Watch Link</label>
+        <?php $cleanWatchUrl = "{$baseUrl}/watch/" . ($asset['slug'] ?: $asset['id']); ?>
+        <label class="form-label small fw-bold text-secondary">Direct Watch Link (SEO Clean)</label>
         <div class="input-group mb-2">
-          <input type="text" class="form-control bg-light font-monospace small" id="shareLinkInput" value="<?= $baseUrl ?>/watch.php?v=<?= $asset['id'] ?>" readonly>
-          <button class="btn btn-dark copy-btn" id="copyShareLinkBtn" data-copy="<?= $baseUrl ?>/watch.php?v=<?= $asset['id'] ?>">Copy</button>
+          <input type="text" class="form-control bg-light font-monospace small" id="shareLinkInput" value="<?= $cleanWatchUrl ?>" readonly>
+          <button class="btn btn-dark copy-btn" id="copyShareLinkBtn" data-copy="<?= $cleanWatchUrl ?>">Copy</button>
         </div>
 
         <!-- Start at timestamp switch (YouTube feature) -->
@@ -851,7 +779,7 @@ const copyShareLinkBtn = document.getElementById('copyShareLinkBtn');
 const shareEmbedInput = document.getElementById('shareEmbedInput');
 const copyShareEmbedBtn = document.getElementById('copyShareEmbedBtn');
 
-const baseWatchUrl = <?= json_encode($baseUrl . '/watch.php?v=' . $asset['id']) ?>;
+const baseWatchUrl = <?= json_encode($baseUrl . '/watch/' . ($asset['slug'] ?: $asset['id'])) ?>;
 const baseEmbedTag = <?= json_encode($embedTag) ?>;
 
 function formatTimestampDisplay(sec) {
@@ -877,7 +805,7 @@ if (shareModalEl && timestampCheck) {
     const video = document.getElementById('mainVideo');
     const currSec = video ? Math.floor(video.currentTime || 0) : 0;
     if (timestampCheck.checked && currSec > 0) {
-      const timedUrl = `${baseWatchUrl}&t=${currSec}s`;
+      const timedUrl = `${baseWatchUrl}?t=${currSec}s`;
       const timedEmbed = `<iframe src="<?= $baseUrl ?>/embed.php?v=<?= $asset['id'] ?>&t=${currSec}s" width="100%" height="450" frameborder="0" allowfullscreen></iframe>`;
       if (shareLinkInput) shareLinkInput.value = timedUrl;
       if (copyShareLinkBtn) copyShareLinkBtn.setAttribute('data-copy', timedUrl);

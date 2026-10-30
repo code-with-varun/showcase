@@ -68,7 +68,8 @@ $filesToDeploy = [
     'api/sync.php',
     'api/like.php',
     'css/youtube.css',
-    'js/app.js'
+    'js/app.js',
+    'js/yt-player.js'
 ];
 
 $successCount = 0;
