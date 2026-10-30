@@ -1439,6 +1439,20 @@ body.sidebar-mobile-open .yt-sidebar-backdrop {
   }
 }
 
+/* Folder Accordion & Explorer Styles */
+.folder-chevron.rotate-down {
+  transform: rotate(90deg) !important;
+}
+.folder-header-row:hover {
+  background-color: #f8f9fa !important;
+}
+.folder-file-row:hover {
+  background-color: #fbfbfb;
+}
+.hover-danger:hover {
+  color: #cc0000 !important;
+}
+
 
 
 

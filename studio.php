@@ -84,8 +84,14 @@ $assetsQuery->execute($params);
 $assetsList = $assetsQuery->fetchAll();
 
 // Fetch all distinct folders from assets table & saved folder visibility rules
-$allFoldersStmt = $pdo->query("SELECT id, file_path, file_size, visibility, asset_type, project FROM assets");
+$allFoldersStmt = $pdo->query("
+    SELECT a.*, c.name AS category_name 
+    FROM assets a 
+    LEFT JOIN categories c ON a.category_id = c.id 
+    ORDER BY a.file_path ASC, a.created_at DESC
+");
 $allFolders = [];
+$folderAssets = [];
 while ($aRow = $allFoldersStmt->fetch()) {
     $fPath = str_replace('\\', '/', $aRow['file_path']);
     $dir = dirname($fPath);
@@ -110,6 +116,8 @@ while ($aRow = $allFoldersStmt->fetch()) {
     if ($v === 0) $allFolders[$dir]['count_private']++;
     elseif ($v === 2) $allFolders[$dir]['count_public']++;
     else $allFolders[$dir]['count_unlisted']++;
+
+    $folderAssets[$dir][] = $aRow;
 }
 
 try {
@@ -538,22 +546,32 @@ include __DIR__ . '/includes/header.php';
           </div>
         </div>
 
-        <!-- TAB 4: FOLDER VISIBILITY & BULK CONTROL -->
+        <!-- TAB 4: FOLDER VISIBILITY & COLLAPSIBLE FILE EXPLORER -->
         <div class="tab-pane fade" id="folders-panel" role="tabpanel">
-          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 pb-3 border-bottom border-light-subtle">
+          
+          <!-- Top Action & Filter Toolbar -->
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom border-light-subtle">
             <div>
               <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
                 <i class="bi bi-folder-fill text-warning"></i>
-                <span>Folder-Level Visibility Manager</span>
+                <span>Folder Visibility & File Explorer</span>
               </h5>
               <p class="text-secondary small mb-0">
-                Bulk-update visibility across all files in any folder with 1 click. Individual file overrides are preserved, and new files synced or uploaded into that folder will inherit this setting.
+                Click any folder to expand and inspect its files. Use the 1-click bulk buttons to update the entire folder, or change any file individually with the inline dropdown.
               </p>
             </div>
-            <div class="d-flex align-items-center gap-2">
-              <span class="badge bg-light text-secondary border small">
-                <i class="bi bi-folder2-open me-1"></i><?= count($allFolders) ?> Active Folders
-              </span>
+
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <div class="input-group input-group-sm" style="width: 220px;">
+                <span class="input-group-text bg-light text-secondary border-secondary-subtle"><i class="bi bi-search"></i></span>
+                <input type="text" id="folderSearchInput" class="form-control bg-white text-dark border-secondary-subtle" placeholder="Filter folders...">
+              </div>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="expandAllFoldersBtn" title="Expand all folders">
+                <i class="bi bi-arrows-expand me-1"></i> Expand All
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="collapseAllFoldersBtn" title="Collapse all folders">
+                <i class="bi bi-arrows-collapse me-1"></i> Collapse All
+              </button>
             </div>
           </div>
 
@@ -563,12 +581,14 @@ include __DIR__ . '/includes/header.php';
               <p class="small mb-0">No media folders detected yet. Place folders inside <code>assets/</code> (e.g. <code>assets/videos/MyProject</code>) and run FTP sync.</p>
             </div>
           <?php else: ?>
-            <div class="row g-3" id="folderCardsContainer">
-              <?php foreach ($allFolders as $f): 
+            <div class="d-flex flex-column gap-2" id="folderAccordionContainer">
+              <?php 
+              $folderIndex = 0;
+              foreach ($allFolders as $dir => $f): 
+                $folderIndex++;
+                $collapseId = "folderCollapse_" . md5($dir);
                 $tot = $f['total_files'];
-                $pubPct = $tot > 0 ? round(($f['count_public'] / $tot) * 100) : 0;
-                $unlPct = $tot > 0 ? round(($f['count_unlisted'] / $tot) * 100) : 0;
-                $prvPct = $tot > 0 ? round(($f['count_private'] / $tot) * 100) : 0;
+                $fItems = $folderAssets[$dir] ?? [];
 
                 if ($tot === 0) {
                   $statusBadge = 'bg-secondary-subtle text-secondary';
@@ -584,7 +604,7 @@ include __DIR__ . '/includes/header.php';
                   $statusLabel = '🔗 All Unlisted';
                 } else {
                   $statusBadge = 'bg-info-subtle text-info';
-                  $statusLabel = '⚡ Mixed';
+                  $statusLabel = "⚡ Mixed ({$f['count_public']} Pub, {$f['count_unlisted']} Unl, {$f['count_private']} Prv)";
                 }
 
                 $iconClass = match($f['asset_type']) {
@@ -594,61 +614,132 @@ include __DIR__ . '/includes/header.php';
                   default    => 'bi-folder-fill text-warning',
                 };
               ?>
-                <div class="col-md-6 col-xl-4 folder-card-wrapper" data-folder="<?= h($f['folder_path']) ?>">
-                  <div class="card h-100 border-light-subtle shadow-sm bg-white">
-                    <div class="card-body p-3 d-flex flex-column justify-content-between">
-                      <div>
-                        <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
-                          <div class="d-flex align-items-center gap-2 min-w-0">
-                            <div class="p-2 bg-light rounded-3 fs-5 flex-shrink-0 border border-light-subtle">
-                              <i class="bi <?= $iconClass ?>"></i>
-                            </div>
-                            <div class="min-w-0">
-                              <h6 class="fw-bold text-dark mb-0 text-truncate" title="<?= h($f['display_name']) ?>">
-                                <?= h($f['display_name']) ?>
-                              </h6>
-                              <span class="small text-secondary font-monospace" style="font-size: 0.78rem;">
-                                <span class="folder-files-count"><?= $f['total_files'] ?></span> files • <?= formatBytes((float)$f['total_size']) ?>
-                              </span>
-                            </div>
-                          </div>
-                          <span class="badge <?= $statusBadge ?> border small text-nowrap folder-status-badge">
-                            <?= $statusLabel ?>
-                          </span>
-                        </div>
-
-                        <!-- Progress Bar of Visibility Distribution -->
-                        <div class="progress mb-2 bg-light border border-light-subtle" style="height: 6px;">
-                          <div class="progress-bar bg-success bar-public" style="width: <?= $pubPct ?>%" title="Public: <?= $f['count_public'] ?>"></div>
-                          <div class="progress-bar bg-warning bar-unlisted" style="width: <?= $unlPct ?>%" title="Unlisted: <?= $f['count_unlisted'] ?>"></div>
-                          <div class="progress-bar bg-danger bar-private" style="width: <?= $prvPct ?>%" title="Private: <?= $f['count_private'] ?>"></div>
-                        </div>
-
-                        <div class="d-flex align-items-center justify-content-between small text-secondary mb-3" style="font-size: 0.75rem;">
-                          <span class="lbl-public"><i class="bi bi-globe2 text-success me-1"></i><strong class="count-val"><?= $f['count_public'] ?></strong> Public</span>
-                          <span class="lbl-unlisted"><i class="bi bi-link-45deg text-warning me-1"></i><strong class="count-val"><?= $f['count_unlisted'] ?></strong> Unlisted</span>
-                          <span class="lbl-private"><i class="bi bi-lock-fill text-danger me-1"></i><strong class="count-val"><?= $f['count_private'] ?></strong> Private</span>
-                        </div>
+                <div class="card border-light-subtle shadow-sm bg-white overflow-hidden folder-item-card" data-folder="<?= h($dir) ?>" data-search="<?= strtolower(h($f['display_name'])) ?>">
+                  
+                  <!-- Folder Header Bar -->
+                  <div class="card-header bg-white py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom-0 folder-header-row" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#<?= $collapseId ?>" aria-expanded="false">
+                    
+                    <!-- Left: Chevron + Folder Icon + Name + Counts -->
+                    <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1">
+                      <i class="bi bi-chevron-right text-secondary folder-chevron transition-icon fs-6" style="transition: transform 0.2s;"></i>
+                      <div class="p-1 px-2 rounded-2 bg-light border border-light-subtle flex-shrink-0">
+                        <i class="bi <?= $iconClass ?> fs-5"></i>
                       </div>
-
-                      <!-- 1-Click Bulk Action Buttons -->
-                      <div>
-                        <div class="small fw-bold text-secondary mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px;">Bulk Set Folder:</div>
-                        <div class="btn-group w-100 btn-group-sm" role="group">
-                          <button type="button" class="btn btn-outline-success folder-bulk-btn" data-folder="<?= h($f['folder_path']) ?>" data-vis="2" data-name="<?= h($f['display_name']) ?>" title="Set ALL files in this folder to Public">
-                            <i class="bi bi-globe2 me-1"></i>Public
-                          </button>
-                          <button type="button" class="btn btn-outline-warning text-dark folder-bulk-btn" data-folder="<?= h($f['folder_path']) ?>" data-vis="1" data-name="<?= h($f['display_name']) ?>" title="Set ALL files in this folder to Unlisted">
-                            <i class="bi bi-link-45deg me-1"></i>Unlisted
-                          </button>
-                          <button type="button" class="btn btn-outline-danger folder-bulk-btn" data-folder="<?= h($f['folder_path']) ?>" data-vis="0" data-name="<?= h($f['display_name']) ?>" title="Set ALL files in this folder to Private">
-                            <i class="bi bi-lock-fill me-1"></i>Private
-                          </button>
-                        </div>
+                      <div class="min-w-0">
+                        <span class="fw-bold text-dark text-truncate d-inline-block align-middle me-2" style="font-size: 0.95rem;">
+                          <?= h($f['display_name']) ?>
+                        </span>
+                        <span class="small text-secondary font-monospace">
+                          (<span class="folder-file-count"><?= $tot ?></span> files • <?= formatBytes((float)$f['total_size']) ?>)
+                        </span>
                       </div>
+                    </div>
 
+                    <!-- Right: Status Badge + 1-Click Bulk Action Buttons -->
+                    <div class="d-flex align-items-center gap-2 flex-wrap flex-shrink-0" onclick="event.stopPropagation();">
+                      <span class="badge <?= $statusBadge ?> border small folder-status-badge py-1 px-2">
+                        <?= $statusLabel ?>
+                      </span>
+
+                      <div class="btn-group btn-group-sm" role="group" title="Set visibility for ALL files in this folder">
+                        <button type="button" class="btn btn-outline-success folder-bulk-btn py-1 px-2" data-folder="<?= h($dir) ?>" data-vis="2" data-name="<?= h($f['display_name']) ?>">
+                          <i class="bi bi-globe2 me-1"></i>Public
+                        </button>
+                        <button type="button" class="btn btn-outline-warning text-dark folder-bulk-btn py-1 px-2" data-folder="<?= h($dir) ?>" data-vis="1" data-name="<?= h($f['display_name']) ?>">
+                          <i class="bi bi-link-45deg me-1"></i>Unlisted
+                        </button>
+                        <button type="button" class="btn btn-outline-danger folder-bulk-btn py-1 px-2" data-folder="<?= h($dir) ?>" data-vis="0" data-name="<?= h($f['display_name']) ?>">
+                          <i class="bi bi-lock-fill me-1"></i>Private
+                        </button>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  <!-- Collapsible File List Body -->
+                  <div class="collapse folder-collapse-body" id="<?= $collapseId ?>">
+                    <div class="card-body p-0 border-top border-light-subtle bg-light">
+                      <?php if (empty($fItems)): ?>
+                        <div class="p-3 text-center text-secondary small">No files inside this folder.</div>
+                      <?php else: ?>
+                        <div class="table-responsive bg-white">
+                          <table class="table table-hover table-sm mb-0 align-middle">
+                            <thead class="table-light text-secondary small text-uppercase" style="font-size: 0.72rem;">
+                              <tr>
+                                <th style="width: 36px;" class="ps-3">
+                                  <input type="checkbox" class="form-check-input folder-select-all" data-target="<?= $collapseId ?>" title="Select all in this folder">
+                                </th>
+                                <th style="width: 60px;">Preview</th>
+                                <th>Title & Filename</th>
+                                <th style="width: 100px;">Size</th>
+                                <th style="width: 140px;">Visibility</th>
+                                <th style="width: 110px;" class="text-end pe-3">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <?php foreach ($fItems as $item): 
+                                $isVid = ($item['asset_type'] === 'video');
+                                $isImg = ($item['asset_type'] === 'image');
+                                $tSlug = $item['slug'] ?: $item['id'];
+                                $wUrl = "{$baseUrl}/watch/{$tSlug}";
+                                $sUrl = "{$baseUrl}/stream/{$tSlug}";
+                                $rUrl = "{$baseUrl}/" . ltrim($item['file_path'], '/');
+                                $iThumb = $item['thumbnail_path'] ? "{$baseUrl}/" . ltrim($item['thumbnail_path'], '/') : ($isImg ? $rUrl : '');
+                                if (!$iThumb) {
+                                  $iThumb = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='45' viewBox='0 0 80 45'><rect width='80' height='45' fill='%23f0f0f0'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23666' font-size='10'>" . strtoupper($item['extension']) . "</text></svg>";
+                                }
+                                $iVis = (int)$item['visibility'];
+                              ?>
+                                <tr class="folder-file-row" data-id="<?= $item['id'] ?>" data-folder="<?= h($dir) ?>">
+                                  <td class="ps-3">
+                                    <input type="checkbox" class="form-check-input asset-chk" value="<?= $item['id'] ?>">
+                                  </td>
+                                  <td>
+                                    <a href="<?= $wUrl ?>" target="_blank" style="display: block; width: 48px; aspect-ratio: 16/9; border-radius: 4px; overflow: hidden; background: #000;">
+                                      <img src="<?= $iThumb ?>" alt="" style="width: 100%; height: 100%; object-fit: cover;">
+                                    </a>
+                                  </td>
+                                  <td>
+                                    <div class="fw-semibold text-dark text-truncate" style="max-width: 340px; font-size: 0.88rem;">
+                                      <a href="<?= $wUrl ?>" target="_blank" class="text-dark text-decoration-none hover-danger">
+                                        <?= h($item['title']) ?>
+                                      </a>
+                                    </div>
+                                    <div class="small text-secondary font-monospace" style="font-size: 0.73rem;">
+                                      <?= h($item['file_name']) ?>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <span class="small font-monospace text-secondary" style="font-size: 0.78rem;">
+                                      <?= formatBytes((float)$item['file_size']) ?>
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <select class="form-select form-select-sm inline-vis-select py-1" data-id="<?= $item['id'] ?>" data-folder="<?= h($dir) ?>" style="font-size: 0.78rem; width: 125px;">
+                                      <option value="2" <?= $iVis === 2 ? 'selected' : '' ?>>🌍 Public</option>
+                                      <option value="1" <?= $iVis === 1 ? 'selected' : '' ?>>🔗 Unlisted</option>
+                                      <option value="0" <?= $iVis === 0 ? 'selected' : '' ?>>🔒 Private</option>
+                                    </select>
+                                  </td>
+                                  <td class="text-end pe-3">
+                                    <div class="btn-group btn-group-sm">
+                                      <a href="<?= $wUrl ?>" target="_blank" class="btn btn-outline-secondary p-1 px-2" title="View / Play">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                      </a>
+                                      <button type="button" class="btn btn-outline-danger delete-asset-btn p-1 px-2" data-id="<?= $item['id'] ?>" data-title="<?= h($item['title']) ?>" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              <?php endforeach; ?>
+                            </tbody>
+                          </table>
+                        </div>
+                      <?php endif; ?>
                     </div>
                   </div>
+
                 </div>
               <?php endforeach; ?>
             </div>
@@ -1565,12 +1656,13 @@ document.getElementById('confirmAddToPlaylistBtn')?.addEventListener('click', ()
 });
 
 // ============================================================
-// Folder-Level Visibility & Bulk Asset Controls
+// Folder-Level Visibility & Collapsible Explorer Controls
 // ============================================================
 
 // 1. One-Click Folder Bulk Visibility Buttons
 document.querySelectorAll('.folder-bulk-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
     const folder = btn.getAttribute('data-folder');
     const folderName = btn.getAttribute('data-name') || folder;
     const vis = parseInt(btn.getAttribute('data-vis'), 10);
@@ -1590,34 +1682,22 @@ document.querySelectorAll('.folder-bulk-btn').forEach(btn => {
         if (data.success) {
           showToast(data.message || `Folder updated to ${visLabel}!`);
 
-          // Update folder card UI
-          const cardWrapper = document.querySelector(`.folder-card-wrapper[data-folder="${CSS.escape(folder)}"]`);
-          if (cardWrapper) {
-            const badge = cardWrapper.querySelector('.folder-status-badge');
-            const totalFiles = parseInt(cardWrapper.querySelector('.folder-files-count')?.textContent || '0', 10);
-            const barPub = cardWrapper.querySelector('.bar-public');
-            const barUnl = cardWrapper.querySelector('.bar-unlisted');
-            const barPrv = cardWrapper.querySelector('.bar-private');
-            const cntPub = cardWrapper.querySelector('.lbl-public .count-val');
-            const cntUnl = cardWrapper.querySelector('.lbl-unlisted .count-val');
-            const cntPrv = cardWrapper.querySelector('.lbl-private .count-val');
-
+          // Update folder card header badge
+          const card = document.querySelector(`.folder-item-card[data-folder="${CSS.escape(folder)}"]`);
+          if (card) {
+            const badge = card.querySelector('.folder-status-badge');
             if (badge) {
-              badge.className = 'badge border small text-nowrap folder-status-badge ' + 
+              badge.className = 'badge border small folder-status-badge py-1 px-2 ' + 
                 (vis === 2 ? 'bg-success-subtle text-success' : (vis === 0 ? 'bg-danger-subtle text-danger' : 'bg-warning-subtle text-dark'));
               badge.textContent = (vis === 2 ? '🌍 All Public' : (vis === 0 ? '🔒 All Private' : '🔗 All Unlisted'));
             }
-
-            if (barPub) barPub.style.width = (vis === 2 ? '100%' : '0%');
-            if (barUnl) barUnl.style.width = (vis === 1 ? '100%' : '0%');
-            if (barPrv) barPrv.style.width = (vis === 0 ? '100%' : '0%');
-
-            if (cntPub) cntPub.textContent = (vis === 2 ? totalFiles : 0);
-            if (cntUnl) cntUnl.textContent = (vis === 1 ? totalFiles : 0);
-            if (cntPrv) cntPrv.textContent = (vis === 0 ? totalFiles : 0);
+            // Update all inline dropdowns inside this folder
+            card.querySelectorAll('.inline-vis-select').forEach(sel => {
+              sel.value = vis;
+            });
           }
 
-          // Update any visible table rows belonging to this folder
+          // Update any visible table rows in Manage Assets table belonging to this folder
           document.querySelectorAll(`.asset-row[data-folder^="${CSS.escape(folder)}"]`).forEach(row => {
             const visBadge = row.querySelector('td:nth-child(8) .badge, .badge[title]');
             if (visBadge) {
@@ -1637,6 +1717,128 @@ document.querySelectorAll('.folder-bulk-btn').forEach(btn => {
         btn.disabled = false;
         showToast('Error: ' + err.message, false);
       });
+  });
+});
+
+// 2. Chevron Rotation & Collapse Animation
+document.querySelectorAll('.folder-collapse-body').forEach(collapseEl => {
+  collapseEl.addEventListener('show.bs.collapse', () => {
+    const card = collapseEl.closest('.folder-item-card');
+    card?.querySelector('.folder-chevron')?.classList.add('rotate-down');
+    card?.querySelector('.folder-header-row')?.classList.add('bg-light');
+  });
+  collapseEl.addEventListener('hide.bs.collapse', () => {
+    const card = collapseEl.closest('.folder-item-card');
+    card?.querySelector('.folder-chevron')?.classList.remove('rotate-down');
+    card?.querySelector('.folder-header-row')?.classList.remove('bg-light');
+  });
+});
+
+// 3. Expand All & Collapse All Folders
+document.getElementById('expandAllFoldersBtn')?.addEventListener('click', () => {
+  document.querySelectorAll('.folder-collapse-body').forEach(el => {
+    bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }).show();
+  });
+});
+document.getElementById('collapseAllFoldersBtn')?.addEventListener('click', () => {
+  document.querySelectorAll('.folder-collapse-body').forEach(el => {
+    bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }).hide();
+  });
+});
+
+// 4. Real-Time Folder Search Filtering
+document.getElementById('folderSearchInput')?.addEventListener('input', (e) => {
+  const term = e.target.value.toLowerCase().trim();
+  document.querySelectorAll('.folder-item-card').forEach(card => {
+    const searchStr = card.getAttribute('data-search') || '';
+    card.style.display = (!term || searchStr.includes(term)) ? '' : 'none';
+  });
+});
+
+// 5. Individual File Inline Visibility Dropdown
+document.querySelectorAll('.inline-vis-select').forEach(sel => {
+  sel.addEventListener('change', () => {
+    const assetId = sel.getAttribute('data-id');
+    const folder = sel.getAttribute('data-folder');
+    const newVis = parseInt(sel.value, 10);
+    const visLabel = (newVis === 2) ? 'Public' : ((newVis === 0) ? 'Private' : 'Unlisted');
+
+    sel.disabled = true;
+    const fd = new FormData();
+    fd.append('asset_ids[]', assetId);
+    fd.append('visibility', newVis);
+
+    fetch('api/folder-visibility.php?action=bulk_assets', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        sel.disabled = false;
+        if (data.success) {
+          showToast(`File visibility set to ${visLabel}!`);
+
+          // Recalculate parent folder status badge live
+          const folderCard = document.querySelector(`.folder-item-card[data-folder="${CSS.escape(folder)}"]`);
+          if (folderCard) {
+            const selects = folderCard.querySelectorAll('.inline-vis-select');
+            let pub = 0, unl = 0, prv = 0;
+            selects.forEach(s => {
+              const v = parseInt(s.value, 10);
+              if (v === 2) pub++;
+              else if (v === 0) prv++;
+              else unl++;
+            });
+            const tot = selects.length;
+            const badge = folderCard.querySelector('.folder-status-badge');
+            if (badge) {
+              if (pub === tot) {
+                badge.className = 'badge border small folder-status-badge py-1 px-2 bg-success-subtle text-success';
+                badge.textContent = '🌍 All Public';
+              } else if (prv === tot) {
+                badge.className = 'badge border small folder-status-badge py-1 px-2 bg-danger-subtle text-danger';
+                badge.textContent = '🔒 All Private';
+              } else if (unl === tot) {
+                badge.className = 'badge border small folder-status-badge py-1 px-2 bg-warning-subtle text-dark';
+                badge.textContent = '🔗 All Unlisted';
+              } else {
+                badge.className = 'badge border small folder-status-badge py-1 px-2 bg-info-subtle text-info';
+                badge.textContent = `⚡ Mixed (${pub} Pub, ${unl} Unl, ${prv} Prv)`;
+              }
+            }
+          }
+
+          // Also update corresponding Manage Assets table row if visible
+          document.querySelectorAll(`.asset-row[data-id="${CSS.escape(assetId)}"]`).forEach(row => {
+            const b = row.querySelector('td:nth-child(8) .badge, .badge[title]');
+            if (b) {
+              b.className = 'badge border ' + (newVis === 2 ? 'bg-success-subtle text-success' : (newVis === 0 ? 'bg-danger-subtle text-danger' : 'bg-warning-subtle text-warning'));
+              b.setAttribute('title', visLabel);
+              const icon = b.querySelector('i');
+              if (icon) icon.className = 'bi ' + (newVis === 2 ? 'bi-globe2' : (newVis === 0 ? 'bi-lock-fill' : 'bi-link-45deg'));
+              const txt = b.querySelector('span');
+              if (txt) txt.textContent = visLabel;
+            }
+          });
+        } else {
+          showToast(data.error || 'Update failed', false);
+        }
+      })
+      .catch(err => {
+        sel.disabled = false;
+        showToast('Error: ' + err.message, false);
+      });
+  });
+});
+
+// 6. Folder Select All Checkbox (Inside Folder Table)
+document.querySelectorAll('.folder-select-all').forEach(master => {
+  master.addEventListener('change', () => {
+    const targetId = master.getAttribute('data-target');
+    const container = document.getElementById(targetId);
+    if (container) {
+      container.querySelectorAll('.asset-chk').forEach(c => {
+        c.checked = master.checked;
+      });
+      updateBulkToolbar();
+    }
   });
 });
 
