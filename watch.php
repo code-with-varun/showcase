@@ -128,6 +128,13 @@ if (!empty($playlistId)) {
             }
         }
 
+        // Target previous and next video in playlist
+        $prevVideoUrl = '';
+        if ($playlistIndex > 0 && isset($playlistVideos[$playlistIndex - 1])) {
+            $prevPv = $playlistVideos[$playlistIndex - 1];
+            $prevVideoUrl = "{$baseUrl}/watch/" . ($prevPv['slug'] ?: $prevPv['id']) . "?list=" . ($activePlaylist['slug'] ?: $activePlaylist['id']);
+        }
+
         // Target next video in playlist for autoplay
         if ($playlistIndex !== -1 && isset($playlistVideos[$playlistIndex + 1])) {
             $nextPv = $playlistVideos[$playlistIndex + 1];
@@ -137,7 +144,7 @@ if (!empty($playlistId)) {
                 'duration_seconds' => $nextPv['duration_seconds'],
                 'thumbnail_path' => $nextPv['thumbnail_path'],
             ];
-            $nextVideoUrl = "{$baseUrl}/watch.php?v={$nextPv['id']}&list={$activePlaylist['id']}&autoplay=1";
+            $nextVideoUrl = "{$baseUrl}/watch/" . ($nextPv['slug'] ?: $nextPv['id']) . "?list=" . ($activePlaylist['slug'] ?: $activePlaylist['id']) . "&autoplay=1";
         } elseif (!empty($playlistVideos)) {
             // End of playlist: loop back to beginning
             $firstPv = $playlistVideos[0];
@@ -147,18 +154,43 @@ if (!empty($playlistId)) {
                 'duration_seconds' => $firstPv['duration_seconds'],
                 'thumbnail_path' => $firstPv['thumbnail_path'],
             ];
-            $nextVideoUrl = "{$baseUrl}/watch.php?v={$firstPv['id']}&list={$activePlaylist['id']}&autoplay=1";
+            $nextVideoUrl = "{$baseUrl}/watch/" . ($firstPv['slug'] ?: $firstPv['id']) . "?list=" . ($activePlaylist['slug'] ?: $activePlaylist['id']) . "&autoplay=1";
         }
     }
 }
 
-$streamUrl = "{$baseUrl}/stream.php?v={$asset['id']}";
+$streamUrl = "{$baseUrl}/stream/" . ($asset['slug'] ?: $asset['id']);
 $rawCdnUrl = "{$baseUrl}/" . ltrim($asset['file_path'], '/');
-$embedTag  = "<iframe src=\"{$baseUrl}/embed.php?v={$asset['id']}\" width=\"100%\" height=\"450\" frameborder=\"0\" allowfullscreen></iframe>";
+$embedTag  = "<iframe src=\"{$baseUrl}/embed/" . ($asset['slug'] ?: $asset['id']) . "\" width=\"100%\" height=\"450\" frameborder=\"0\" allowfullscreen></iframe>";
 
+// SEO Configurations
 $pageTitle = $asset['title'];
-include __DIR__ . '/includes/header.php';
+$seoDescription = !empty($asset['description']) 
+    ? mb_substr(strip_tags($asset['description']), 0, 160) 
+    : "Watch '{$asset['title']}' on Runit Showcase.";
+$canonicalUrl = "{$baseUrl}/watch/" . ($asset['slug'] ?: $asset['id']);
+$ogUrl = $canonicalUrl;
+$ogImage = $asset['thumbnail_path'] ? "{$baseUrl}/" . ltrim($asset['thumbnail_path'], '/') : "{$baseUrl}/public/Runit%20logo%20pack/app-icon-red.png";
+$ogType = 'video.other';
 
+include __DIR__ . '/includes/header.php';
+?>
+
+<!-- Schema.org VideoObject Structured Data for Google Rich Snippets -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  "name": <?= json_encode($asset['title']) ?>,
+  "description": <?= json_encode($seoDescription) ?>,
+  "thumbnailUrl": [<?= json_encode($ogImage) ?>],
+  "uploadDate": <?= json_encode(date('c', strtotime($asset['created_at']))) ?>,
+  "duration": <?= json_encode('PT' . (int)$asset['duration_seconds'] . 'S') ?>,
+  "contentUrl": <?= json_encode($rawCdnUrl) ?>,
+  "embedUrl": <?= json_encode("{$baseUrl}/embed/" . ($asset['slug'] ?: $asset['id'])) ?>
+}
+</script>
+<?php
 // Helper to convert timestamps in description into clickable links
 function formatDescriptionTimestamps(string $desc): string {
     $escaped = htmlspecialchars($desc, ENT_QUOTES, 'UTF-8');
@@ -265,9 +297,23 @@ $visInfo = getVisibilityLabel($visibility);
               <!-- Controls Buttons -->
               <div class="yt-controls-row">
                 <div class="d-flex align-items-center gap-2">
+                  <?php if ($activePlaylist): ?>
+                    <!-- Previous Video in Playlist -->
+                    <a href="<?= $prevVideoUrl ?: '#' ?>" class="yt-ctrl-btn text-decoration-none <?= empty($prevVideoUrl) ? 'opacity-25' : '' ?>" title="Previous video in playlist" style="<?= empty($prevVideoUrl) ? 'pointer-events: none;' : '' ?>">
+                      <i class="bi bi-skip-start-fill"></i>
+                    </a>
+                  <?php endif; ?>
+
                   <button class="yt-ctrl-btn yt-play-btn" title="Play/Pause (Space/K)">
                     <i class="bi bi-play-fill"></i>
                   </button>
+
+                  <?php if ($activePlaylist && !empty($nextVideoUrl)): ?>
+                    <!-- Next Video in Playlist -->
+                    <a href="<?= $nextVideoUrl ?>" class="yt-ctrl-btn text-decoration-none" title="Next video in playlist">
+                      <i class="bi bi-skip-end-fill"></i>
+                    </a>
+                  <?php endif; ?>
 
                   <!-- Rewind 10s -->
                   <button class="yt-ctrl-btn yt-seek-btn yt-seek-back-btn" id="seekBackBtn" title="Rewind 10 seconds (J or Left Arrow)">
@@ -487,12 +533,17 @@ $visInfo = getVisibilityLabel($visibility);
                   <?= ($playlistIndex !== -1 ? ($playlistIndex + 1) : 1) ?> / <?= count($playlistVideos) ?> videos
                 </div>
               </div>
-              <span class="badge bg-white text-danger small">Playlist</span>
+              <div class="d-flex align-items-center gap-1">
+                <a href="<?= $baseUrl ?>/playlist/<?= ($activePlaylist['slug'] ?: $activePlaylist['id']) ?>" class="btn btn-sm btn-outline-light rounded-pill px-2 py-0" title="View Playlist Overview" style="font-size: 0.72rem;">
+                  <i class="bi bi-box-arrow-up-right me-1"></i>List
+                </a>
+                <span class="badge bg-white text-danger small">Playlist</span>
+              </div>
             </div>
             <div class="playlist-queue-scroll p-2 d-flex flex-column gap-1" style="max-height: 360px; overflow-y: auto;">
               <?php foreach ($playlistVideos as $pIdx => $pItem): 
                 $isCurrent = ($pItem['id'] === $asset['id']);
-                $itemUrl = "{$baseUrl}/watch.php?v={$pItem['id']}&list={$activePlaylist['id']}";
+                $itemUrl = "{$baseUrl}/watch/" . ($pItem['slug'] ?: $pItem['id']) . "?list=" . ($activePlaylist['slug'] ?: $activePlaylist['id']);
                 $itemThumb = $pItem['thumbnail_path'] ? "{$baseUrl}/" . ltrim($pItem['thumbnail_path'], '/') : "{$baseUrl}/assets/thumbnails/thumb-flowcv.png";
               ?>
                 <a href="<?= $itemUrl ?>" class="yt-upnext-card p-1 rounded text-decoration-none <?= $isCurrent ? 'bg-danger-subtle border border-danger-subtle' : '' ?>">

@@ -170,6 +170,137 @@ switch ($action) {
         echo json_encode(['success' => true, 'message' => 'Removed from playlist.']);
         break;
 
+    case 'get':
+        $id = $_GET['id'] ?? $_POST['id'] ?? '';
+        if (empty($id)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Playlist ID required']);
+            exit;
+        }
+
+        $stmt = $pdo->prepare("SELECT * FROM playlists WHERE id = :id OR slug = :slug LIMIT 1");
+        $stmt->execute([':id' => $id, ':slug' => $id]);
+        $playlist = $stmt->fetch();
+
+        if (!$playlist) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'Playlist not found']);
+            exit;
+        }
+
+        if ((int)$playlist['visibility'] === 0 && !$isAdmin) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Access denied']);
+            exit;
+        }
+
+        $itemStmt = $pdo->prepare("
+            SELECT a.id, a.title, a.duration_seconds, a.thumbnail_path, a.file_name, a.views_count, pi.position, pi.id as item_id 
+            FROM playlist_items pi 
+            JOIN assets a ON pi.asset_id = a.id 
+            WHERE pi.playlist_id = :pid 
+            ORDER BY pi.position ASC, pi.created_at ASC
+        ");
+        $itemStmt->execute([':pid' => $playlist['id']]);
+        $items = $itemStmt->fetchAll();
+
+        echo json_encode(['success' => true, 'playlist' => $playlist, 'items' => $items]);
+        break;
+
+    case 'update':
+        if (!$isAdmin) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+
+        $id = $_POST['id'] ?? '';
+        $title = trim($_POST['title'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $visibility = isset($_POST['visibility']) ? (int)$_POST['visibility'] : 1;
+        $visibility = max(0, min(2, $visibility));
+
+        if (empty($id) || empty($title)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Playlist ID and Title are required']);
+            exit;
+        }
+
+        $upStmt = $pdo->prepare("
+            UPDATE playlists 
+            SET title = :title, description = :desc, visibility = :vis, updated_at = NOW() 
+            WHERE id = :id
+        ");
+        $upStmt->execute([
+            ':id'    => $id,
+            ':title' => $title,
+            ':desc'  => $description ?: null,
+            ':vis'   => $visibility,
+        ]);
+
+        echo json_encode(['success' => true, 'message' => 'Playlist updated successfully!']);
+        break;
+
+    case 'reorder':
+        if (!$isAdmin) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+
+        $playlistId = $_POST['playlist_id'] ?? '';
+        $assetId    = $_POST['asset_id'] ?? '';
+        $direction  = $_POST['direction'] ?? ''; // 'up' or 'down'
+
+        if (empty($playlistId) || empty($assetId) || !in_array($direction, ['up', 'down'])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Invalid reorder parameters']);
+            exit;
+        }
+
+        // Fetch all items in current order
+        $stmt = $pdo->prepare("SELECT id, asset_id, position FROM playlist_items WHERE playlist_id = :pid ORDER BY position ASC, created_at ASC");
+        $stmt->execute([':pid' => $playlistId]);
+        $items = $stmt->fetchAll();
+
+        $targetIdx = -1;
+        foreach ($items as $idx => $it) {
+            if ($it['asset_id'] === $assetId) {
+                $targetIdx = $idx;
+                break;
+            }
+        }
+
+        if ($targetIdx === -1) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'Item not found in playlist']);
+            exit;
+        }
+
+        $swapIdx = ($direction === 'up') ? $targetIdx - 1 : $targetIdx + 1;
+        if ($swapIdx >= 0 && $swapIdx < count($items)) {
+            $currentId  = $items[$targetIdx]['id'];
+            $swapId     = $items[$swapIdx]['id'];
+            $posCurrent = $items[$swapIdx]['position'];
+            $posSwap    = $items[$targetIdx]['position'];
+
+            // Ensure distinct positions
+            if ($posCurrent === $posSwap) {
+                $posCurrent = $swapIdx + 1;
+                $posSwap    = $targetIdx + 1;
+            }
+
+            $u1 = $pdo->prepare("UPDATE playlist_items SET position = :pos WHERE id = :id");
+            $u1->execute([':pos' => $posCurrent, ':id' => $currentId]);
+            $u1->execute([':pos' => $posSwap, ':id' => $swapId]);
+
+            $pdo->prepare("UPDATE playlists SET updated_at = NOW() WHERE id = :pid")->execute([':pid' => $playlistId]);
+            echo json_encode(['success' => true, 'message' => 'Playlist order updated!']);
+        } else {
+            echo json_encode(['success' => true, 'message' => 'Item is already at the limit']);
+        }
+        break;
+
     default:
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Unknown action']);

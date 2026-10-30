@@ -60,7 +60,11 @@ if ($activeType === 'playlist') {
                 ORDER BY pi2.position ASC, pi2.created_at ASC LIMIT 1) AS first_thumbnail,
                (SELECT pi3.asset_id FROM playlist_items pi3 
                 WHERE pi3.playlist_id = p.id 
-                ORDER BY pi3.position ASC, pi3.created_at ASC LIMIT 1) AS first_asset_id
+                ORDER BY pi3.position ASC, pi3.created_at ASC LIMIT 1) AS first_asset_id,
+               (SELECT a2.slug FROM playlist_items pi4 
+                JOIN assets a2 ON pi4.asset_id = a2.id 
+                WHERE pi4.playlist_id = p.id 
+                ORDER BY pi4.position ASC, pi4.created_at ASC LIMIT 1) AS first_asset_slug
         FROM playlists p
         LEFT JOIN playlist_items pi ON p.id = pi.playlist_id
         WHERE $plWhere
@@ -129,22 +133,22 @@ include __DIR__ . '/includes/header.php';
 
   <!-- Category Navigation Switcher (Videos, Playlists, Images, Documents) -->
   <div class="yt-chip-bar mb-4">
-    <a href="<?= $baseUrl ?>/index.php?type=video<?= $searchQ ? '&q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'video') ? 'active' : '' ?>">
+    <a href="<?= $baseUrl ?>/videos<?= $searchQ ? '?q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'video') ? 'active' : '' ?>">
       <i class="bi bi-play-circle-fill text-danger me-1"></i> Videos
       <span class="badge bg-secondary ms-1"><?= (int)$catCounts['count_videos'] ?></span>
     </a>
 
-    <a href="<?= $baseUrl ?>/index.php?type=playlist<?= $searchQ ? '&q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'playlist') ? 'active' : '' ?>">
+    <a href="<?= $baseUrl ?>/playlists<?= $searchQ ? '?q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'playlist') ? 'active' : '' ?>">
       <i class="bi bi-collection-play-fill text-danger me-1"></i> Playlists
       <span class="badge bg-secondary ms-1"><?= (int)$plCount ?></span>
     </a>
 
-    <a href="<?= $baseUrl ?>/index.php?type=image<?= $searchQ ? '&q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'image') ? 'active' : '' ?>">
+    <a href="<?= $baseUrl ?>/images<?= $searchQ ? '?q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'image') ? 'active' : '' ?>">
       <i class="bi bi-images text-primary me-1"></i> Images
       <span class="badge bg-secondary ms-1"><?= (int)$catCounts['count_images'] ?></span>
     </a>
 
-    <a href="<?= $baseUrl ?>/index.php?type=document<?= $searchQ ? '&q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'document') ? 'active' : '' ?>">
+    <a href="<?= $baseUrl ?>/documents<?= $searchQ ? '?q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'document') ? 'active' : '' ?>">
       <i class="bi bi-archive-fill text-warning me-1"></i> Documents & Archives
       <span class="badge bg-secondary ms-1"><?= (int)$catCounts['count_docs'] ?></span>
     </a>
@@ -219,14 +223,15 @@ include __DIR__ . '/includes/header.php';
       <?php else: ?>
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 g-xl-4" id="videosGridContainer">
           <?php foreach ($assetsList as $vid): 
-            $watchUrl  = "{$baseUrl}/watch.php?v={$vid['id']}";
-            $streamUrl = "{$baseUrl}/stream.php?v={$vid['id']}";
+            $vidSlug = $vid['slug'] ?: $vid['id'];
+            $watchUrl  = "{$baseUrl}/watch/{$vidSlug}";
+            $streamUrl = "{$baseUrl}/stream/{$vidSlug}";
             $thumbUrl  = $vid['thumbnail_path'] ? "{$baseUrl}/" . ltrim($vid['thumbnail_path'], '/') : '';
             if (!$thumbUrl) {
                 $thumbUrl = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'><rect width='640' height='360' fill='%23e0e0e0'/><circle cx='320' cy='180' r='48' fill='%23cc0000'/><polygon points='310,160 340,180 310,200' fill='%23ffffff'/></svg>";
             }
 
-            $embedTag = "<iframe src=\"{$baseUrl}/embed.php?v={$vid['id']}\" width=\"100%\" height=\"450\" frameborder=\"0\" allowfullscreen></iframe>";
+            $embedTag = "<iframe src=\"{$baseUrl}/embed/{$vidSlug}\" width=\"100%\" height=\"450\" frameborder=\"0\" allowfullscreen></iframe>";
             $shareData = json_encode([
               'id'          => $vid['id'],
               'title'       => $vid['title'],
@@ -340,14 +345,17 @@ include __DIR__ . '/includes/header.php';
       <?php else: ?>
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-3 g-lg-4">
           <?php foreach ($playlistsList as $pl): 
+            $plSlug = $pl['slug'] ?: $pl['id'];
+            $overviewUrl = "{$baseUrl}/playlist/{$plSlug}";
             $firstAid = $pl['first_asset_id'];
-            $playAllUrl = $firstAid ? "{$baseUrl}/watch.php?v={$firstAid}&list={$pl['id']}" : "#";
+            $firstSlug = $pl['first_asset_slug'] ?: $firstAid;
+            $playAllUrl = $firstAid ? "{$baseUrl}/watch/{$firstSlug}?list={$plSlug}" : $overviewUrl;
             $plThumb = $pl['first_thumbnail'] ? "{$baseUrl}/" . ltrim($pl['first_thumbnail'], '/') : "{$baseUrl}/assets/thumbnails/thumb-flowcv.png";
             $vCount = (int)$pl['video_count'];
           ?>
             <div class="col">
               <div class="yt-card">
-                <a href="<?= $playAllUrl ?>" class="d-block text-decoration-none">
+                <a href="<?= $playAllUrl ?>" class="d-block text-decoration-none" title="Play All in <?= h($pl['title']) ?>">
                   <div class="yt-thumb-wrapper position-relative overflow-hidden" style="border-radius: 12px;">
                     <img src="<?= $plThumb ?>" alt="<?= h($pl['title']) ?>" loading="lazy">
                     <!-- Signature YouTube Playlist Overlay on Right Side -->
@@ -365,12 +373,12 @@ include __DIR__ . '/includes/header.php';
                 </a>
                 <div class="yt-card-body px-1 pt-2">
                   <div class="yt-card-info min-w-0">
-                    <a href="<?= $playAllUrl ?>" class="text-decoration-none">
+                    <a href="<?= $overviewUrl ?>" class="text-decoration-none">
                       <h6 class="yt-card-title mb-1 text-dark fw-bold" title="<?= h($pl['title']) ?>"><?= h($pl['title']) ?></h6>
                     </a>
                     <div class="yt-card-meta small text-secondary">
                       <div><?= $vCount ?> videos <?= $pl['description'] ? '• ' . h(substr($pl['description'], 0, 40)) . '...' : '' ?></div>
-                      <div class="mt-1"><a href="<?= $playAllUrl ?>" class="text-danger fw-semibold text-decoration-none small">View Full Playlist <i class="bi bi-arrow-right"></i></a></div>
+                      <div class="mt-1"><a href="<?= $overviewUrl ?>" class="text-danger fw-semibold text-decoration-none small">View Full Playlist <i class="bi bi-arrow-right"></i></a></div>
                     </div>
                   </div>
                 </div>

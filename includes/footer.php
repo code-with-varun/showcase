@@ -13,18 +13,20 @@
         </div>
 
         <div class="d-flex align-items-center gap-3">
-          <a href="<?= $baseUrl ?>/index.php?type=video" class="text-secondary text-decoration-none">Videos</a>
+          <a href="<?= $baseUrl ?>/videos" class="text-secondary text-decoration-none">Videos</a>
           <span class="text-muted">•</span>
-          <a href="<?= $baseUrl ?>/index.php?type=image" class="text-secondary text-decoration-none">Images</a>
+          <a href="<?= $baseUrl ?>/playlists" class="text-secondary text-decoration-none">Playlists</a>
           <span class="text-muted">•</span>
-          <a href="<?= $baseUrl ?>/index.php?type=document" class="text-secondary text-decoration-none">Documents</a>
+          <a href="<?= $baseUrl ?>/images" class="text-secondary text-decoration-none">Images</a>
+          <span class="text-muted">•</span>
+          <a href="<?= $baseUrl ?>/documents" class="text-secondary text-decoration-none">Documents</a>
           <?php if (isAdminLoggedIn()): ?>
             <span class="text-muted">•</span>
-            <a href="<?= $baseUrl ?>/studio.php" class="text-danger text-decoration-none fw-semibold">
+            <a href="<?= $baseUrl ?>/studio" class="text-danger text-decoration-none fw-semibold">
               <i class="bi bi-cpu me-1"></i>Studio
             </a>
             <span class="text-muted">•</span>
-            <a href="<?= $baseUrl ?>/settings.php" class="text-secondary text-decoration-none">
+            <a href="<?= $baseUrl ?>/settings" class="text-secondary text-decoration-none">
               <i class="bi bi-shield-lock me-1"></i>Settings
             </a>
           <?php endif; ?>

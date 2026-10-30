@@ -3,6 +3,38 @@
 # Optimized for Hostinger / Apache 2.4+ / PHP 8.x
 # ============================================================
 
+# 0. URL Rewriting for SEO-Friendly Clean URLs
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Do not rewrite real files or directories
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Clean Category Feeds
+    RewriteRule ^videos/?$ index.php?type=video [QSA,L]
+    RewriteRule ^playlists/?$ index.php?type=playlist [QSA,L]
+    RewriteRule ^images/?$ index.php?type=image [QSA,L]
+    RewriteRule ^documents/?$ index.php?type=document [QSA,L]
+
+    # Core App Pages
+    RewriteRule ^studio/?$ studio.php [QSA,L]
+    RewriteRule ^settings/?$ settings.php [QSA,L]
+    RewriteRule ^login/?$ login.php [QSA,L]
+    RewriteRule ^logout/?$ logout.php [QSA,L]
+
+    # Dedicated Playlist Overview Page
+    RewriteRule ^playlist/([^/]+)/?$ playlist.php?list=$1 [QSA,L]
+
+    # Video Watch Page
+    RewriteRule ^watch/([^/]+)/?$ watch.php?v=$1 [QSA,L]
+
+    # High-Performance CDN Stream & Embed
+    RewriteRule ^stream/([^/]+)/?$ stream.php?v=$1 [QSA,L]
+    RewriteRule ^embed/([^/]+)/?$ embed.php?v=$1 [QSA,L]
+</IfModule>
+
 # 1. Default Directory Index
 DirectoryIndex index.php index.html
 

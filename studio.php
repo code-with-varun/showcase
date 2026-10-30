@@ -85,7 +85,11 @@ $playlistsStmt = $pdo->query("
             ORDER BY pi2.position ASC, pi2.created_at ASC LIMIT 1) AS first_thumbnail,
            (SELECT pi3.asset_id FROM playlist_items pi3 
             WHERE pi3.playlist_id = p.id 
-            ORDER BY pi3.position ASC, pi3.created_at ASC LIMIT 1) AS first_asset_id
+            ORDER BY pi3.position ASC, pi3.created_at ASC LIMIT 1) AS first_asset_id,
+           (SELECT a4.slug FROM playlist_items pi4 
+            JOIN assets a4 ON pi4.asset_id = a4.id 
+            WHERE pi4.playlist_id = p.id 
+            ORDER BY pi4.position ASC, pi4.created_at ASC LIMIT 1) AS first_asset_slug
     FROM playlists p
     LEFT JOIN playlist_items pi ON p.id = pi.playlist_id
     GROUP BY p.id
@@ -96,7 +100,7 @@ $allPlaylists = $playlistsStmt ? $playlistsStmt->fetchAll() : [];
 $playlistDetails = [];
 if (!empty($allPlaylists)) {
     $itemQuery = $pdo->query("
-        SELECT pi.*, a.title AS video_title, a.duration_seconds, a.thumbnail_path 
+        SELECT pi.*, a.title AS video_title, a.duration_seconds, a.thumbnail_path, a.slug AS video_slug 
         FROM playlist_items pi 
         JOIN assets a ON pi.asset_id = a.id 
         ORDER BY pi.playlist_id, pi.position ASC, pi.created_at ASC
@@ -124,11 +128,11 @@ include __DIR__ . '/includes/header.php';
 
     <!-- Studio Header Actions -->
     <div class="d-flex align-items-center gap-2 flex-wrap">
-      <button class="btn btn-danger d-flex align-items-center gap-2 px-3 py-2 fw-semibold shadow-sm" id="studioSyncBtn">
-        <i class="bi bi-arrow-repeat"></i>
-        <span>Sync Filesystem</span>
-      </button>
-      <a href="<?= $baseUrl ?>/settings.php#danger-zone" class="btn btn-outline-danger d-flex align-items-center gap-2 px-3 py-2 fw-semibold shadow-sm" title="Global Reset: purge database & empty assets">
+      <a href="<?= $baseUrl ?>/settings" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-3 py-2 fw-semibold shadow-sm" title="Security & API settings">
+        <i class="bi bi-gear-fill"></i>
+        <span class="d-none d-sm-inline">Settings</span>
+      </a>
+      <a href="<?= $baseUrl ?>/settings#danger-zone" class="btn btn-outline-danger d-flex align-items-center gap-2 px-3 py-2 fw-semibold shadow-sm" title="Global Reset: purge database & empty assets">
         <i class="bi bi-trash3"></i>
         <span class="d-none d-sm-inline">Global Reset</span>
       </a>
@@ -345,17 +349,17 @@ include __DIR__ . '/includes/header.php';
                 <form id="createPlaylistForm">
                   <div class="mb-3">
                     <label class="form-label small fw-bold text-dark">Playlist Title *</label>
-                    <input type="text" id="plTitleInput" class="form-control form-control-sm bg-white" placeholder="e.g. Motion Comic Series, Remix Vault" required>
+                    <input type="text" name="title" id="plTitleInput" class="form-control form-control-sm bg-white" placeholder="e.g. Motion Comic Series, Remix Vault" required>
                   </div>
 
                   <div class="mb-3">
                     <label class="form-label small fw-bold text-dark">Description (Optional)</label>
-                    <textarea id="plDescInput" class="form-control form-control-sm bg-white" rows="2" placeholder="Brief description of this playlist"></textarea>
+                    <textarea name="description" id="plDescInput" class="form-control form-control-sm bg-white" rows="2" placeholder="Brief description of this playlist"></textarea>
                   </div>
 
                   <div class="mb-3">
                     <label class="form-label small fw-bold text-dark">Visibility</label>
-                    <select id="plVisInput" class="form-select form-select-sm bg-white">
+                    <select name="visibility" id="plVisInput" class="form-select form-select-sm bg-white">
                       <option value="1" selected>🔗 Unlisted — anyone with link (Default)</option>
                       <option value="2">🌍 Public — visible in showcase feed</option>
                       <option value="0">🔒 Private — admin only</option>
@@ -389,7 +393,10 @@ include __DIR__ . '/includes/header.php';
                     $plItems = $playlistDetails[$pl['id']] ?? [];
                     $vCount = count($plItems);
                     $firstAid = $pl['first_asset_id'];
-                    $playUrl = $firstAid ? "{$baseUrl}/watch.php?v={$firstAid}&list={$pl['id']}" : "#";
+                    $firstSlug = $pl['first_asset_slug'] ?? ($plItems[0]['video_slug'] ?? $firstAid);
+                    $plSlug = $pl['slug'] ?: $pl['id'];
+                    $playUrl = $firstAid ? "{$baseUrl}/watch/{$firstSlug}?list={$plSlug}" : "#";
+                    $viewUrl = "{$baseUrl}/playlist/{$plSlug}";
                     $visInfo = getVisibilityLabel((int)$pl['visibility']);
                   ?>
                     <div class="card border-light-subtle shadow-sm bg-white overflow-hidden playlist-card-item" data-playlist-id="<?= $pl['id'] ?>">
@@ -401,13 +408,24 @@ include __DIR__ . '/includes/header.php';
                             <span class="badge <?= $visInfo['badge'] ?> border ms-1 small"><?= $visInfo['label'] ?></span>
                           </div>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-1 gap-sm-2 flex-wrap">
+                          <a href="<?= $viewUrl ?>" target="_blank" class="btn btn-sm btn-outline-dark px-2 py-1 small" title="Open Playlist Page">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>View
+                          </a>
                           <?php if ($vCount > 0): ?>
-                            <a href="<?= $playUrl ?>" target="_blank" class="btn btn-sm btn-outline-danger px-2 py-1 small">
+                            <a href="<?= $playUrl ?>" target="_blank" class="btn btn-sm btn-outline-danger px-2 py-1 small" title="Play Playlist">
                               <i class="bi bi-play-fill me-1"></i>Play All (<?= $vCount ?>)
                             </a>
                           <?php endif; ?>
-                          <button class="btn btn-sm btn-outline-secondary px-2 py-1 small" data-bs-toggle="collapse" data-bs-target="#plCollapse-<?= $pl['id'] ?>">
+                          <button class="btn btn-sm btn-outline-secondary px-2 py-1 small edit-playlist-btn" 
+                                  data-id="<?= $pl['id'] ?>" 
+                                  data-title="<?= h($pl['title']) ?>" 
+                                  data-desc="<?= h($pl['description'] ?? '') ?>" 
+                                  data-vis="<?= $pl['visibility'] ?>" 
+                                  title="Edit Playlist Details">
+                            <i class="bi bi-pencil-square me-1"></i>Edit
+                          </button>
+                          <button class="btn btn-sm btn-outline-secondary px-2 py-1 small" data-bs-toggle="collapse" data-bs-target="#plCollapse-<?= $pl['id'] ?>" title="Show/Hide Videos">
                             <i class="bi bi-list-nested me-1"></i>Videos (<?= $vCount ?>)
                           </button>
                           <button class="btn btn-sm btn-outline-danger px-2 py-1 small delete-playlist-btn" data-id="<?= $pl['id'] ?>" data-title="<?= h($pl['title']) ?>" title="Delete Playlist">
@@ -428,16 +446,26 @@ include __DIR__ . '/includes/header.php';
                               <?php foreach ($plItems as $pIdx => $pItem): 
                                 $pThumb = $pItem['thumbnail_path'] ? "{$baseUrl}/" . ltrim($pItem['thumbnail_path'], '/') : "{$baseUrl}/assets/thumbnails/thumb-flowcv.png";
                               ?>
-                                <div class="d-flex align-items-center justify-content-between gap-2 p-2 bg-white rounded border border-light-subtle">
+                                <div class="d-flex align-items-center justify-content-between gap-2 p-2 bg-white rounded border border-light-subtle playlist-item-row" data-asset-id="<?= $pItem['asset_id'] ?>">
                                   <div class="d-flex align-items-center gap-2 min-w-0">
-                                    <span class="text-secondary small fw-bold font-monospace" style="width: 20px;"><?= $pIdx + 1 ?></span>
+                                    <span class="text-secondary small fw-bold font-monospace" style="width: 22px;"><?= $pIdx + 1 ?></span>
                                     <div style="width: 50px; height: 30px; border-radius: 4px; overflow: hidden; background: #000; flex-shrink: 0;">
                                       <img src="<?= $pThumb ?>" alt="" style="width: 100%; height: 100%; object-fit: cover;">
                                     </div>
-                                    <span class="small fw-semibold text-dark text-truncate"><?= h($pItem['video_title']) ?></span>
+                                    <a href="<?= $baseUrl ?>/watch/<?= urlencode($pItem['video_slug'] ?: $pItem['asset_id']) ?>?list=<?= urlencode($plSlug) ?>" target="_blank" class="small fw-semibold text-dark text-truncate text-decoration-none">
+                                      <?= h($pItem['video_title']) ?>
+                                    </a>
                                   </div>
                                   <div class="d-flex align-items-center gap-2 flex-shrink-0">
                                     <span class="small text-secondary font-monospace" style="font-size: 0.75rem;"><?= formatDuration((int)$pItem['duration_seconds']) ?></span>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                      <button class="btn btn-outline-secondary btn-sm py-0 px-1 reorder-playlist-item-btn" data-playlist-id="<?= $pl['id'] ?>" data-asset-id="<?= $pItem['asset_id'] ?>" data-dir="up" <?= ($pIdx === 0) ? 'disabled' : '' ?> title="Move Up">
+                                        <i class="bi bi-chevron-up"></i>
+                                      </button>
+                                      <button class="btn btn-outline-secondary btn-sm py-0 px-1 reorder-playlist-item-btn" data-playlist-id="<?= $pl['id'] ?>" data-asset-id="<?= $pItem['asset_id'] ?>" data-dir="down" <?= ($pIdx === $vCount - 1) ? 'disabled' : '' ?> title="Move Down">
+                                        <i class="bi bi-chevron-down"></i>
+                                      </button>
+                                    </div>
                                     <button class="btn btn-sm btn-link text-danger p-0 remove-from-playlist-btn" data-playlist-id="<?= $pl['id'] ?>" data-asset-id="<?= $pItem['asset_id'] ?>" title="Remove from playlist">
                                       <i class="bi bi-x-circle fs-6"></i>
                                     </button>
@@ -494,7 +522,7 @@ include __DIR__ . '/includes/header.php';
         </select>
 
         <?php if ($typeFilter || $sourceFilter || $projectFilter || $searchFilter): ?>
-          <a href="<?= $baseUrl ?>/studio.php" class="btn btn-outline-secondary btn-sm" title="Clear Filters">
+          <a href="<?= $baseUrl ?>/studio" class="btn btn-outline-secondary btn-sm" title="Clear Filters">
             <i class="bi bi-x-lg"></i>
           </a>
         <?php endif; ?>
@@ -512,15 +540,16 @@ include __DIR__ . '/includes/header.php';
           $isVideo = ($asset['asset_type'] === 'video');
           $isImage = ($asset['asset_type'] === 'image');
           $rawUrl  = "{$baseUrl}/" . ltrim($asset['file_path'], '/');
-          $watchUrl = "{$baseUrl}/watch.php?v={$asset['id']}";
-          $streamUrl = "{$baseUrl}/stream.php?v={$asset['id']}";
+          $targetSlug = $asset['slug'] ?: $asset['id'];
+          $watchUrl = "{$baseUrl}/watch/{$targetSlug}";
+          $streamUrl = "{$baseUrl}/stream/{$targetSlug}";
           $thumb = $asset['thumbnail_path'] ? "{$baseUrl}/" . ltrim($asset['thumbnail_path'], '/') : ($isImage ? $rawUrl : '');
           if (!$thumb) {
             $thumb = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='45' viewBox='0 0 80 45'><rect width='80' height='45' fill='%23f0f0f0'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23666' font-size='10'>" . strtoupper($asset['extension']) . "</text></svg>";
           }
 
           $embedTag = $isVideo 
-            ? "<iframe src=\"{$baseUrl}/embed.php?v={$asset['id']}\" width=\"100%\" height=\"450\" frameborder=\"0\" allowfullscreen></iframe>"
+            ? "<iframe src=\"{$baseUrl}/embed/{$targetSlug}\" width=\"100%\" height=\"450\" frameborder=\"0\" allowfullscreen></iframe>"
             : ($isImage ? "<img src=\"{$rawUrl}\" alt=\"" . h($asset['title']) . "\" />" : "<a href=\"{$rawUrl}\" download>Download " . h($asset['title']) . "</a>");
           
           $shareData = json_encode([
@@ -638,15 +667,16 @@ include __DIR__ . '/includes/header.php';
               $isVideo = ($asset['asset_type'] === 'video');
               $isImage = ($asset['asset_type'] === 'image');
               $rawUrl  = "{$baseUrl}/" . ltrim($asset['file_path'], '/');
-              $watchUrl = "{$baseUrl}/watch.php?v={$asset['id']}";
-              $streamUrl = "{$baseUrl}/stream.php?v={$asset['id']}";
+              $targetSlug = $asset['slug'] ?: $asset['id'];
+              $watchUrl = "{$baseUrl}/watch/{$targetSlug}";
+              $streamUrl = "{$baseUrl}/stream/{$targetSlug}";
               $thumb = $asset['thumbnail_path'] ? "{$baseUrl}/" . ltrim($asset['thumbnail_path'], '/') : ($isImage ? $rawUrl : '');
               if (!$thumb) {
                 $thumb = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='45' viewBox='0 0 80 45'><rect width='80' height='45' fill='%23f0f0f0'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23666' font-size='10'>" . strtoupper($asset['extension']) . "</text></svg>";
               }
 
               $embedTag = $isVideo 
-                ? "<iframe src=\"{$baseUrl}/embed.php?v={$asset['id']}\" width=\"100%\" height=\"450\" frameborder=\"0\" allowfullscreen></iframe>"
+                ? "<iframe src=\"{$baseUrl}/embed/{$targetSlug}\" width=\"100%\" height=\"450\" frameborder=\"0\" allowfullscreen></iframe>"
                 : ($isImage ? "<img src=\"{$rawUrl}\" alt=\"" . h($asset['title']) . "\" />" : "<a href=\"{$rawUrl}\" download>Download " . h($asset['title']) . "</a>");
               
               $shareData = json_encode([
@@ -893,6 +923,48 @@ include __DIR__ . '/includes/header.php';
   </div>
 </div>
 
+<!-- EDIT PLAYLIST MODAL -->
+<div class="modal fade" id="editPlaylistModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-white text-dark border-light-subtle shadow">
+      <div class="modal-header border-bottom border-light-subtle">
+        <h5 class="modal-title d-flex align-items-center gap-2">
+          <i class="bi bi-pencil-square text-danger"></i>
+          <span>Edit Playlist Details</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editPlaylistForm">
+        <input type="hidden" name="id" id="editPlId">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-bold">Playlist Title *</label>
+            <input type="text" name="title" id="editPlTitle" class="form-control bg-light text-dark border-secondary-subtle" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-bold">Description (Optional)</label>
+            <textarea name="description" id="editPlDesc" class="form-control bg-light text-dark border-secondary-subtle" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-bold">Visibility</label>
+            <select name="visibility" id="editPlVis" class="form-select bg-light text-dark border-secondary-subtle">
+              <option value="1">🔗 Unlisted — anyone with link (Default)</option>
+              <option value="2">🌍 Public — visible in showcase feed</option>
+              <option value="0">🔒 Private — admin only</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer border-top border-light-subtle">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger btn-sm fw-semibold" id="saveEditPlaylistBtn">
+            <i class="bi bi-check-circle me-1"></i> Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script>
 // File drop zone UX
 const fileInput = document.getElementById('fileInput');
@@ -1097,13 +1169,13 @@ document.getElementById('confirmDeleteBtn')?.addEventListener('click', () => {
 document.getElementById('createPlaylistForm')?.addEventListener('submit', (e) => {
   e.preventDefault();
   const formData = new FormData(e.target);
-  const btn = document.getElementById('createPlaylistSubmitBtn');
-  btn.disabled = true;
+  const btn = document.getElementById('createPlaylistBtn') || document.getElementById('createPlaylistSubmitBtn');
+  if (btn) btn.disabled = true;
 
   fetch('api/playlists.php?action=create', { method: 'POST', body: formData })
     .then(r => r.json())
     .then(data => {
-      btn.disabled = false;
+      if (btn) btn.disabled = false;
       if (data.success) {
         showToast('Playlist created successfully!');
         setTimeout(() => window.location.reload(), 800);
@@ -1112,9 +1184,85 @@ document.getElementById('createPlaylistForm')?.addEventListener('submit', (e) =>
       }
     })
     .catch(err => {
-      btn.disabled = false;
+      if (btn) btn.disabled = false;
       showToast('Error: ' + err.message, false);
     });
+});
+
+let editPlaylistModalInstance = null;
+document.querySelectorAll('.edit-playlist-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const id = btn.getAttribute('data-id');
+    const title = btn.getAttribute('data-title') || '';
+    const desc = btn.getAttribute('data-desc') || '';
+    const vis = btn.getAttribute('data-vis') || '1';
+
+    document.getElementById('editPlId').value = id;
+    document.getElementById('editPlTitle').value = title;
+    document.getElementById('editPlDesc').value = desc;
+    document.getElementById('editPlVis').value = vis;
+
+    const modalEl = document.getElementById('editPlaylistModal');
+    editPlaylistModalInstance = new bootstrap.Modal(modalEl);
+    editPlaylistModalInstance.show();
+  });
+});
+
+document.getElementById('editPlaylistForm')?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const saveBtn = document.getElementById('saveEditPlaylistBtn');
+  if (saveBtn) saveBtn.disabled = true;
+
+  fetch('api/playlists.php?action=update', { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(data => {
+      if (saveBtn) saveBtn.disabled = false;
+      if (data.success) {
+        showToast('Playlist updated successfully!');
+        if (editPlaylistModalInstance) editPlaylistModalInstance.hide();
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        showToast(data.error || 'Failed to update playlist', false);
+      }
+    })
+    .catch(err => {
+      if (saveBtn) saveBtn.disabled = false;
+      showToast('Error: ' + err.message, false);
+    });
+});
+
+document.querySelectorAll('.reorder-playlist-item-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const playlistId = btn.getAttribute('data-playlist-id');
+    const assetId = btn.getAttribute('data-asset-id');
+    const direction = btn.getAttribute('data-dir');
+    if (!playlistId || !assetId || !direction) return;
+
+    btn.disabled = true;
+    const fd = new FormData();
+    fd.append('playlist_id', playlistId);
+    fd.append('asset_id', assetId);
+    fd.append('direction', direction);
+
+    fetch('api/playlists.php?action=reorder', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          showToast('Playlist order updated');
+          setTimeout(() => window.location.reload(), 400);
+        } else {
+          btn.disabled = false;
+          showToast(data.error || 'Failed to reorder', false);
+        }
+      })
+      .catch(err => {
+        btn.disabled = false;
+        showToast('Error: ' + err.message, false);
+      });
+  });
 });
 
 document.querySelectorAll('.delete-playlist-btn').forEach(btn => {

@@ -52,28 +52,28 @@ $currentType = $_GET['type'] ?? '';
 
     <nav class="nav flex-column gap-1">
       <!-- VIDEOS -->
-      <a class="nav-link <?= ($currentType === 'video' || (empty($currentType) && basename($_SERVER['PHP_SELF']) === 'index.php')) ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=video">
+      <a class="nav-link <?= ($currentType === 'video' || (empty($currentType) && basename($_SERVER['PHP_SELF']) === 'index.php')) ? 'active' : '' ?>" href="<?= $baseUrl ?>/videos">
         <i class="bi bi-play-btn-fill text-danger"></i>
         <span class="nav-text">Videos</span>
         <span class="badge bg-secondary ms-auto small nav-text"><?= (int)$sidebarStats['count_videos'] ?></span>
       </a>
 
       <!-- PLAYLISTS -->
-      <a class="nav-link <?= ($currentType === 'playlist') ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=playlist">
+      <a class="nav-link <?= ($currentType === 'playlist') ? 'active' : '' ?>" href="<?= $baseUrl ?>/playlists">
         <i class="bi bi-collection-play-fill text-danger"></i>
         <span class="nav-text">Playlists</span>
         <span class="badge bg-secondary ms-auto small nav-text"><?= (int)$countPlaylists ?></span>
       </a>
 
       <!-- IMAGES -->
-      <a class="nav-link <?= ($currentType === 'image') ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=image">
+      <a class="nav-link <?= ($currentType === 'image') ? 'active' : '' ?>" href="<?= $baseUrl ?>/images">
         <i class="bi bi-images text-info"></i>
         <span class="nav-text">Images</span>
         <span class="badge bg-secondary ms-auto small nav-text"><?= (int)$sidebarStats['count_images'] ?></span>
       </a>
 
       <!-- DOCUMENTS & ARCHIVES -->
-      <a class="nav-link <?= ($currentType === 'document' || $currentType === 'docs_zips') ? 'active' : '' ?>" href="<?= $baseUrl ?>/index.php?type=document">
+      <a class="nav-link <?= ($currentType === 'document' || $currentType === 'docs_zips') ? 'active' : '' ?>" href="<?= $baseUrl ?>/documents">
         <i class="bi bi-archive-fill text-warning"></i>
         <span class="nav-text">Documents & Archives</span>
         <span class="badge bg-secondary ms-auto small nav-text"><?= (int)$sidebarStats['count_docs_zips'] ?></span>
