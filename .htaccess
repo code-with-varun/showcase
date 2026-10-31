@@ -20,8 +20,11 @@
 
     # Core App Pages
     RewriteRule ^studio/?$ studio.php [QSA,L]
+    RewriteRule ^creator/?$ studio.php [QSA,L]
+    RewriteRule ^admin/?$ studio.php [QSA,L]
     RewriteRule ^settings/?$ settings.php [QSA,L]
     RewriteRule ^login/?$ login.php [QSA,L]
+    RewriteRule ^admin/login/?$ login.php [QSA,L]
     RewriteRule ^logout/?$ logout.php [QSA,L]
 
     # Dedicated Playlist Overview Page

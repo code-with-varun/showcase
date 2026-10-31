@@ -333,9 +333,34 @@ include __DIR__ . '/includes/header.php';
                 </datalist>
               </div>
 
-              <div class="col-md-6">
-                <label class="form-label text-secondary small fw-bold">Custom Thumbnail (Optional for videos/docs)</label>
-                <input type="file" name="thumbnail" accept="image/*" class="form-control bg-light text-dark border-secondary-subtle">
+              <!-- Thumbnail Selection: Upload Device vs Pick from Gallery -->
+              <div class="col-12">
+                <label class="form-label text-secondary small fw-bold d-flex align-items-center justify-content-between mb-2">
+                  <span><i class="bi bi-image me-1 text-danger"></i> Thumbnail Selector (Optional)</span>
+                  <span class="badge bg-light text-secondary border fw-normal" id="uploadThumbBadge">Default / None Selected</span>
+                </label>
+                <div class="card border border-light-subtle bg-light p-2">
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-6">
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white"><i class="bi bi-upload"></i> Device</span>
+                        <input type="file" name="thumbnail" id="uploadFileThumbnail" accept="image/*" class="form-control bg-white">
+                      </div>
+                    </div>
+                    <div class="col-md-6 d-flex gap-2">
+                      <button type="button" class="btn btn-outline-dark btn-sm flex-grow-1 open-gallery-btn" data-target-input="uploadGalleryThumbnail" data-preview-img="uploadThumbPreview" data-badge="uploadThumbBadge">
+                        <i class="bi bi-images me-1 text-primary"></i> Pick from Gallery
+                      </button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm clear-thumb-btn" data-file-input="uploadFileThumbnail" data-gallery-input="uploadGalleryThumbnail" data-preview-img="uploadThumbPreview" data-badge="uploadThumbBadge" title="Clear Thumbnail">
+                        <i class="bi bi-x-circle"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <input type="hidden" name="selected_gallery_thumbnail" id="uploadGalleryThumbnail" value="">
+                  <div id="uploadThumbPreview" class="mt-2 d-none p-1 bg-white border rounded text-center">
+                    <img src="" alt="Thumbnail Preview" style="max-height: 90px; border-radius: 4px; object-fit: cover;">
+                  </div>
+                </div>
               </div>
 
               <div class="col-12">
@@ -680,10 +705,29 @@ include __DIR__ . '/includes/header.php';
                               <?php foreach ($fItems as $item): 
                                 $isVid = ($item['asset_type'] === 'video');
                                 $isImg = ($item['asset_type'] === 'image');
+                                $isDoc = in_array($item['asset_type'], ['document', 'archive']) || in_array($item['extension'], ['pdf', 'zip', 'rar', 'tar', 'gz', 'docx', 'xlsx', 'pptx', 'txt']);
                                 $tSlug = $item['slug'] ?: $item['id'];
-                                $wUrl = "{$baseUrl}/watch/{$tSlug}";
-                                $sUrl = "{$baseUrl}/stream/{$tSlug}";
                                 $rUrl = "{$baseUrl}/" . ltrim($item['file_path'], '/');
+                                
+                                // Context-aware Smart Target URL
+                                if ($isVid) {
+                                  $smartUrl = "{$baseUrl}/watch/{$tSlug}";
+                                  $smartTitle = "Watch Video";
+                                  $smartIcon = "bi-play-circle";
+                                } elseif ($isImg) {
+                                  $smartUrl = "{$baseUrl}/images";
+                                  $smartTitle = "View in Images Gallery";
+                                  $smartIcon = "bi-image";
+                                } elseif ($isDoc) {
+                                  $smartUrl = "{$baseUrl}/documents";
+                                  $smartTitle = "View in Documents Feed";
+                                  $smartIcon = "bi-file-earmark-text";
+                                } else {
+                                  $smartUrl = $rUrl;
+                                  $smartTitle = "Open File";
+                                  $smartIcon = "bi-box-arrow-up-right";
+                                }
+
                                 $iThumb = $item['thumbnail_path'] ? "{$baseUrl}/" . ltrim($item['thumbnail_path'], '/') : ($isImg ? $rUrl : '');
                                 if (!$iThumb) {
                                   $iThumb = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='45' viewBox='0 0 80 45'><rect width='80' height='45' fill='%23f0f0f0'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23666' font-size='10'>" . strtoupper($item['extension']) . "</text></svg>";
@@ -695,13 +739,13 @@ include __DIR__ . '/includes/header.php';
                                     <input type="checkbox" class="form-check-input asset-chk" value="<?= $item['id'] ?>">
                                   </td>
                                   <td>
-                                    <a href="<?= $wUrl ?>" target="_blank" style="display: block; width: 48px; aspect-ratio: 16/9; border-radius: 4px; overflow: hidden; background: #000;">
+                                    <a href="<?= $smartUrl ?>" target="_blank" style="display: block; width: 48px; aspect-ratio: 16/9; border-radius: 4px; overflow: hidden; background: #000;" title="<?= $smartTitle ?>">
                                       <img src="<?= $iThumb ?>" alt="" style="width: 100%; height: 100%; object-fit: cover;">
                                     </a>
                                   </td>
                                   <td>
                                     <div class="fw-semibold text-dark text-truncate" style="max-width: 340px; font-size: 0.88rem;">
-                                      <a href="<?= $wUrl ?>" target="_blank" class="text-dark text-decoration-none hover-danger">
+                                      <a href="<?= $smartUrl ?>" target="_blank" class="text-dark text-decoration-none hover-danger" title="<?= $smartTitle ?>">
                                         <?= h($item['title']) ?>
                                       </a>
                                     </div>
@@ -723,8 +767,8 @@ include __DIR__ . '/includes/header.php';
                                   </td>
                                   <td class="text-end pe-3">
                                     <div class="btn-group btn-group-sm">
-                                      <a href="<?= $wUrl ?>" target="_blank" class="btn btn-outline-secondary p-1 px-2" title="View / Play">
-                                        <i class="bi bi-box-arrow-up-right"></i>
+                                      <a href="<?= $smartUrl ?>" target="_blank" class="btn btn-outline-secondary p-1 px-2" title="<?= $smartTitle ?>">
+                                        <i class="bi <?= $smartIcon ?>"></i>
                                       </a>
                                       <button type="button" class="btn btn-outline-danger delete-asset-btn p-1 px-2" data-id="<?= $item['id'] ?>" data-title="<?= h($item['title']) ?>" title="Delete">
                                         <i class="bi bi-trash"></i>
@@ -934,28 +978,24 @@ include __DIR__ . '/includes/header.php';
 
     <!-- Desktop Table (>= 768px) -->
     <div class="d-none d-md-block table-responsive">
-      <table class="table table-hover mb-0 align-middle">
+      <table class="table table-hover mb-0 align-middle yt-studio-table">
         <thead class="table-light">
-          <tr class="text-secondary small text-uppercase">
-            <th scope="col" style="width: 38px;">
+          <tr class="text-secondary small text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+            <th scope="col" style="width: 38px;" class="ps-3">
               <input type="checkbox" id="selectAllDesktop" class="form-check-input asset-master-chk" title="Select All">
             </th>
-            <th scope="col" style="width: 70px;">Asset</th>
-            <th scope="col">Title & ID</th>
-            <th scope="col">Category</th>
-            <th scope="col">Project</th>
-            <th scope="col">Size</th>
-            <th scope="col">Source</th>
-            <th scope="col">Visibility</th>
-            <th scope="col">Views</th>
-            <th scope="col">Date</th>
-            <th scope="col" class="text-end">Actions</th>
+            <th scope="col" style="min-width: 260px;">Content</th>
+            <th scope="col" style="width: 140px;">Folder & Project</th>
+            <th scope="col" style="width: 130px;">Visibility</th>
+            <th scope="col" style="width: 90px;">Views</th>
+            <th scope="col" style="width: 100px;">Date</th>
+            <th scope="col" style="width: 150px;" class="text-end pe-3">Actions</th>
           </tr>
         </thead>
         <tbody>
           <?php if (empty($assetsList)): ?>
             <tr>
-              <td colspan="11" class="text-center py-4 text-secondary">
+              <td colspan="7" class="text-center py-5 text-secondary">
                 No assets found matching the criteria. Use the uploader or run sync above.
               </td>
             </tr>
@@ -963,9 +1003,29 @@ include __DIR__ . '/includes/header.php';
             <?php foreach ($assetsList as $asset): 
               $isVideo = ($asset['asset_type'] === 'video');
               $isImage = ($asset['asset_type'] === 'image');
+              $isDoc   = in_array($asset['asset_type'], ['document', 'archive']) || in_array($asset['extension'], ['pdf', 'zip', 'rar', 'tar', 'gz', 'docx', 'xlsx', 'pptx', 'txt']);
               $rawUrl  = "{$baseUrl}/" . ltrim($asset['file_path'], '/');
               $targetSlug = $asset['slug'] ?: $asset['id'];
-              $watchUrl = "{$baseUrl}/watch/{$targetSlug}";
+              
+              // Smart link
+              if ($isVideo) {
+                $smartUrl = "{$baseUrl}/watch/{$targetSlug}";
+                $smartLabel = "Watch Video";
+                $smartIcon = "bi-play-circle";
+              } elseif ($isImage) {
+                $smartUrl = "{$baseUrl}/images";
+                $smartLabel = "View in Images";
+                $smartIcon = "bi-image";
+              } elseif ($isDoc) {
+                $smartUrl = "{$baseUrl}/documents";
+                $smartLabel = "View in Documents";
+                $smartIcon = "bi-file-earmark-text";
+              } else {
+                $smartUrl = $rawUrl;
+                $smartLabel = "Open File";
+                $smartIcon = "bi-box-arrow-up-right";
+              }
+
               $streamUrl = "{$baseUrl}/stream/{$targetSlug}";
               $thumb = $asset['thumbnail_path'] ? "{$baseUrl}/" . ltrim($asset['thumbnail_path'], '/') : ($isImage ? $rawUrl : '');
               if (!$thumb) {
@@ -979,7 +1039,7 @@ include __DIR__ . '/includes/header.php';
               $shareData = json_encode([
                 'id'          => $asset['id'],
                 'title'       => $asset['title'],
-                'watchUrl'    => $watchUrl,
+                'watchUrl'    => $smartUrl,
                 'cdnUrl'      => $isVideo ? $streamUrl : $rawUrl,
                 'embedTag'    => $embedTag,
                 'markdownTag' => "![" . h($asset['title']) . "]({$rawUrl})"
@@ -1003,61 +1063,85 @@ include __DIR__ . '/includes/header.php';
               ]);
             ?>
               <tr class="asset-row" data-id="<?= $asset['id'] ?>" data-folder="<?= h(dirname(str_replace('\\', '/', $asset['file_path']))) ?>">
-                <td>
+                <td class="ps-3">
                   <input type="checkbox" class="form-check-input asset-chk" value="<?= $asset['id'] ?>">
                 </td>
+                
+                <!-- Combined Content (Thumbnail + Title + Metadata Subtitle) -->
                 <td>
-                  <a href="<?= $watchUrl ?>" target="_blank" style="display: block; width: 64px; aspect-ratio: 16/9; border-radius: 4px; overflow: hidden; background: #e0e0e0;">
-                    <img src="<?= $thumb ?>" alt="" style="width: 100%; height: 100%; object-fit: cover;">
-                  </a>
+                  <div class="d-flex align-items-center gap-2">
+                    <a href="<?= $smartUrl ?>" target="_blank" style="display: block; width: 64px; aspect-ratio: 16/9; border-radius: 4px; overflow: hidden; background: #000; flex-shrink: 0;" title="<?= $smartLabel ?>">
+                      <img src="<?= $thumb ?>" alt="" style="width: 100%; height: 100%; object-fit: cover;">
+                    </a>
+                    <div class="min-w-0" style="max-width: 380px;">
+                      <a href="<?= $smartUrl ?>" target="_blank" class="fw-bold text-dark text-truncate d-block text-decoration-none hover-danger mb-0" style="font-size: 0.88rem;" title="<?= h($asset['title']) ?>">
+                        <?= h($asset['title']) ?>
+                      </a>
+                      <div class="text-secondary font-monospace d-flex flex-wrap align-items-center gap-2" style="font-size: 0.72rem;">
+                        <span><?= h($asset['file_name']) ?></span>
+                        <span>•</span>
+                        <span><?= formatBytes((float)$asset['file_size']) ?></span>
+                        <span>•</span>
+                        <span><?= $asset['source'] === 'web_upload' ? 'Web' : 'FTP' ?></span>
+                      </div>
+                    </div>
+                  </div>
                 </td>
+
+                <!-- Folder & Project -->
                 <td>
-                  <div class="fw-bold text-dark"><?= h($asset['title']) ?></div>
-                  <div class="small text-secondary font-monospace">ID: <?= $asset['id'] ?> • <?= h($asset['file_name']) ?></div>
+                  <div class="d-flex flex-column gap-1">
+                    <?php if (!empty($asset['project'])): ?>
+                      <span class="badge bg-primary-subtle text-primary border border-primary-subtle text-truncate text-start" style="max-width: 130px;" title="Project: <?= h($asset['project']) ?>">
+                        <i class="bi bi-folder2 me-1"></i><?= h($asset['project']) ?>
+                      </span>
+                    <?php endif; ?>
+                    <span class="badge bg-light text-secondary border text-truncate text-start" style="max-width: 130px; font-size: 0.68rem;" title="<?= h($asset['category_name'] ?: 'General') ?>">
+                      <?= h($asset['category_name'] ?: 'General') ?>
+                    </span>
+                  </div>
                 </td>
-                <td><span class="badge bg-light text-dark border"><?= h($asset['category_name'] ?: 'General') ?></span></td>
-                <td>
-                  <?php if (!empty($asset['project'])): ?>
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle"><i class="bi bi-folder2 me-1"></i><?= h($asset['project']) ?></span>
-                  <?php else: ?>
-                    <span class="text-secondary small">—</span>
-                  <?php endif; ?>
-                </td>
-                <td><span class="small font-monospace"><?= formatBytes((float)$asset['file_size']) ?></span></td>
-                <td>
-                  <?php if ($asset['source'] === 'web_upload'): ?>
-                    <span class="badge bg-danger-subtle text-danger"><i class="bi bi-cloud-arrow-up"></i> Web</span>
-                  <?php else: ?>
-                    <span class="badge bg-success-subtle text-success"><i class="bi bi-folder-symlink"></i> FTP Sync</span>
-                  <?php endif; ?>
-                </td>
+
+                <!-- Visibility -->
                 <td>
                   <?php 
                   $visVal = (int)($asset['visibility'] ?? ($asset['is_public'] >= 1 ? 2 : 0));
                   $visInfo = getVisibilityLabel($visVal);
                   ?>
-                  <span class="badge <?= $visInfo['badge'] ?> border" title="<?= $visInfo['label'] ?>">
+                  <span class="badge <?= $visInfo['badge'] ?> border d-inline-flex align-items-center gap-1 py-1 px-2" title="<?= $visInfo['label'] ?>">
                     <i class="bi <?= $visInfo['icon'] ?>"></i>
-                    <span class="d-none d-xl-inline ms-1"><?= $visInfo['label'] ?></span>
+                    <span><?= $visInfo['label'] ?></span>
                   </span>
                 </td>
-                <td><span class="small"><?= number_format((int)$asset['views_count']) ?></span></td>
-                <td><span class="small text-secondary"><?= timeAgo($asset['created_at']) ?></span></td>
-                <td class="text-end">
+
+                <!-- Views -->
+                <td class="text-nowrap">
+                  <span class="small font-monospace text-secondary"><i class="bi bi-eye me-1"></i><?= number_format((int)$asset['views_count']) ?></span>
+                </td>
+
+                <!-- Date -->
+                <td class="text-nowrap">
+                  <span class="small text-secondary" style="font-size: 0.78rem;" title="<?= $asset['created_at'] ?>">
+                    <?= date('M d, Y', strtotime($asset['created_at'])) ?>
+                  </span>
+                </td>
+
+                <!-- Actions -->
+                <td class="text-end pe-3 text-nowrap">
                   <div class="btn-group btn-group-sm">
                     <?php if ($isVideo): ?>
                       <button class="btn btn-outline-danger add-to-playlist-btn" data-id="<?= $asset['id'] ?>" data-title="<?= h($asset['title']) ?>" title="Add to Playlist">
                         <i class="bi bi-collection-play"></i>
                       </button>
                     <?php endif; ?>
-                    <button class="btn btn-outline-warning edit-asset-btn" data-asset='<?= htmlspecialchars($editData, ENT_QUOTES) ?>' title="Edit Metadata">
+                    <button class="btn btn-outline-warning edit-asset-btn" data-asset='<?= htmlspecialchars($editData, ENT_QUOTES) ?>' title="Edit Metadata & Thumbnail">
                       <i class="bi bi-pencil-square"></i>
                     </button>
                     <button class="btn btn-outline-info" data-share-asset='<?= htmlspecialchars($shareData, ENT_QUOTES) ?>' title="Share / Embed">
                       <i class="bi bi-share"></i>
                     </button>
-                    <a href="<?= $watchUrl ?>" target="_blank" class="btn btn-outline-secondary" title="Watch / View">
-                      <i class="bi bi-box-arrow-up-right"></i>
+                    <a href="<?= $smartUrl ?>" target="_blank" class="btn btn-outline-secondary" title="<?= $smartLabel ?>">
+                      <i class="bi <?= $smartIcon ?>"></i>
                     </a>
                     <button class="btn btn-outline-danger delete-asset-btn" data-id="<?= $asset['id'] ?>" data-title="<?= h($asset['title']) ?>" title="Delete">
                       <i class="bi bi-trash"></i>
@@ -1133,16 +1217,39 @@ include __DIR__ . '/includes/header.php';
             <div class="form-text text-secondary" style="font-size: 0.75rem;">Shown below the description on the watch page.</div>
           </div>
 
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label class="form-label text-secondary small fw-bold">Custom Thumbnail (Replace existing)</label>
-              <input type="file" name="thumbnail" accept="image/*" class="form-control bg-light text-dark border-secondary-subtle">
+          <!-- Edit Thumbnail Selector -->
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-bold d-flex align-items-center justify-content-between">
+              <span><i class="bi bi-image me-1 text-warning"></i> Thumbnail (Replace existing)</span>
+              <span class="badge bg-light text-secondary border fw-normal" id="editThumbBadge">Keep Current</span>
+            </label>
+            <div class="card border border-light-subtle bg-light p-2">
+              <div class="row g-2 align-items-center">
+                <div class="col-md-6">
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white"><i class="bi bi-upload"></i> Device</span>
+                    <input type="file" name="thumbnail" id="editFileThumbnail" accept="image/*" class="form-control bg-white">
+                  </div>
+                </div>
+                <div class="col-md-6 d-flex gap-2">
+                  <button type="button" class="btn btn-outline-dark btn-sm flex-grow-1 open-gallery-btn" data-target-input="editGalleryThumbnail" data-preview-img="editThumbPreview" data-badge="editThumbBadge">
+                    <i class="bi bi-images me-1 text-primary"></i> Pick from Gallery
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm clear-thumb-btn" data-file-input="editFileThumbnail" data-gallery-input="editGalleryThumbnail" data-preview-img="editThumbPreview" data-badge="editThumbBadge" title="Clear Thumbnail">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                </div>
+              </div>
+              <input type="hidden" name="selected_gallery_thumbnail" id="editGalleryThumbnail" value="">
+              <div id="editThumbPreview" class="mt-2 d-none p-1 bg-white border rounded text-center">
+                <img src="" alt="Thumbnail Preview" style="max-height: 90px; border-radius: 4px; object-fit: cover;">
+              </div>
             </div>
+          </div>
 
-            <div class="col-md-6">
-              <label class="form-label text-secondary small fw-bold">Tags (Comma-separated)</label>
-              <input type="text" name="tags" id="editTags" class="form-control bg-light text-dark border-secondary-subtle">
-            </div>
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-bold">Tags (Comma-separated)</label>
+            <input type="text" name="tags" id="editTags" class="form-control bg-light text-dark border-secondary-subtle">
           </div>
         </div>
         <div class="modal-footer border-top border-light-subtle">
@@ -1261,6 +1368,42 @@ include __DIR__ . '/includes/header.php';
           </button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- THUMBNAIL GALLERY PICKER MODAL -->
+<div class="modal fade" id="galleryPickerModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content bg-white text-dark border-light-subtle shadow">
+      <div class="modal-header border-bottom border-light-subtle py-2 px-3">
+        <h6 class="modal-title d-flex align-items-center gap-2 fw-bold">
+          <i class="bi bi-images text-danger"></i>
+          <span>Pick Thumbnail from Gallery</span>
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="d-flex align-items-center justify-content-between mb-3 gap-2">
+          <input type="text" id="gallerySearchInput" class="form-control form-control-sm" placeholder="Search gallery images by title or folder...">
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="refreshGalleryBtn" title="Refresh Images">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+        <div id="galleryLoadingSpinner" class="text-center py-4">
+          <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
+          <div class="small text-secondary mt-1">Loading gallery images...</div>
+        </div>
+        <div id="galleryGrid" class="row g-2 d-none" style="max-height: 420px; overflow-y: auto;">
+          <!-- Rendered dynamically -->
+        </div>
+        <div id="galleryEmptyMessage" class="d-none text-center py-4 text-secondary small">
+          No images found in your gallery. Upload an image first or choose one from your device.
+        </div>
+      </div>
+      <div class="modal-footer border-top border-light-subtle py-2 px-3">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1409,6 +1552,13 @@ document.querySelectorAll('.edit-asset-btn').forEach(btn => {
 
     const modal = new bootstrap.Modal(document.getElementById('editAssetModal'));
     modal.show();
+
+    // Reset edit thumbnail state
+    document.getElementById('editFileThumbnail').value = '';
+    document.getElementById('editGalleryThumbnail').value = '';
+    const editPreview = document.getElementById('editThumbPreview');
+    editPreview.classList.add('d-none');
+    document.getElementById('editThumbBadge').textContent = 'Keep Current';
   });
 });
 
@@ -1463,6 +1613,186 @@ document.getElementById('confirmDeleteBtn')?.addEventListener('click', () => {
         showToast(data.error || 'Delete failed', false);
       }
     });
+});
+
+// Playlists Manager Handlers
+// -------------------------------------------------------------
+// Gallery Thumbnail Picker Logic
+// -------------------------------------------------------------
+let cachedGalleryImages = null;
+let activeTargetInputId = null;
+let activePreviewImgId = null;
+let activeBadgeId = null;
+const galleryModalEl = document.getElementById('galleryPickerModal');
+let galleryModalInstance = null;
+
+function loadGalleryImages() {
+  const loading = document.getElementById('galleryLoadingSpinner');
+  const grid = document.getElementById('galleryGrid');
+  const empty = document.getElementById('galleryEmptyMessage');
+
+  loading.classList.remove('d-none');
+  grid.classList.add('d-none');
+  empty.classList.add('d-none');
+
+  fetch('api/gallery-images.php')
+    .then(res => res.json())
+    .then(data => {
+      loading.classList.add('d-none');
+      if (data.success && data.images && data.images.length > 0) {
+        cachedGalleryImages = data.images;
+        renderGalleryGrid(cachedGalleryImages);
+        grid.classList.remove('d-none');
+      } else {
+        empty.classList.remove('d-none');
+      }
+    })
+    .catch(err => {
+      loading.classList.add('d-none');
+      empty.textContent = 'Error loading gallery: ' + err.message;
+      empty.classList.remove('d-none');
+    });
+}
+
+function renderGalleryGrid(images) {
+  const grid = document.getElementById('galleryGrid');
+  grid.innerHTML = images.map(img => `
+    <div class="col-4 col-sm-3 col-md-2 gallery-item-col" data-title="${(img.title || '').toLowerCase()}" data-project="${(img.project || '').toLowerCase()}">
+      <div class="card h-100 border p-1 gallery-card-btn" style="cursor: pointer; transition: transform 0.15s ease;" data-path="${img.path}" data-url="${img.url}" data-title="${img.title || ''}">
+        <div style="aspect-ratio: 16/9; overflow: hidden; background: #000; border-radius: 4px;">
+          <img src="${img.url}" alt="${img.title || ''}" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+        <div class="small text-truncate mt-1 text-dark fw-semibold" style="font-size: 0.7rem;" title="${img.title || ''}">
+          ${img.title || 'Untitled'}
+        </div>
+        <div class="text-secondary font-monospace" style="font-size: 0.65rem;">
+          ${img.project || ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  // Click handler on card
+  grid.querySelectorAll('.gallery-card-btn').forEach(card => {
+    card.addEventListener('click', () => {
+      const path = card.getAttribute('data-path');
+      const url = card.getAttribute('data-url');
+      const title = card.getAttribute('data-title');
+
+      if (activeTargetInputId) {
+        document.getElementById(activeTargetInputId).value = path;
+      }
+      if (activePreviewImgId) {
+        const previewEl = document.getElementById(activePreviewImgId);
+        const imgEl = previewEl.querySelector('img');
+        if (imgEl) imgEl.src = url;
+        previewEl.classList.remove('d-none');
+      }
+      if (activeBadgeId) {
+        const badge = document.getElementById(activeBadgeId);
+        badge.textContent = 'Gallery: ' + (title || path.split('/').pop());
+        badge.className = 'badge bg-success-subtle text-success border border-success-subtle fw-normal';
+      }
+
+      if (galleryModalInstance) {
+        galleryModalInstance.hide();
+      }
+      showToast('Selected: ' + (title || path.split('/').pop()));
+    });
+  });
+}
+
+// Search filter in gallery
+document.getElementById('gallerySearchInput')?.addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase().trim();
+  document.querySelectorAll('.gallery-item-col').forEach(el => {
+    const title = el.getAttribute('data-title') || '';
+    const proj = el.getAttribute('data-project') || '';
+    if (!q || title.includes(q) || proj.includes(q)) {
+      el.classList.remove('d-none');
+    } else {
+      el.classList.add('d-none');
+    }
+  });
+});
+
+document.getElementById('refreshGalleryBtn')?.addEventListener('click', () => {
+  cachedGalleryImages = null;
+  loadGalleryImages();
+});
+
+// Open Gallery buttons
+document.querySelectorAll('.open-gallery-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeTargetInputId = btn.getAttribute('data-target-input');
+    activePreviewImgId = btn.getAttribute('data-preview-img');
+    activeBadgeId = btn.getAttribute('data-badge');
+
+    if (!galleryModalInstance) {
+      galleryModalInstance = new bootstrap.Modal(galleryModalEl);
+    }
+    galleryModalInstance.show();
+
+    if (!cachedGalleryImages) {
+      loadGalleryImages();
+    } else {
+      renderGalleryGrid(cachedGalleryImages);
+    }
+  });
+});
+
+// Clear Thumbnail buttons
+document.querySelectorAll('.clear-thumb-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const fileId = btn.getAttribute('data-file-input');
+    const galId = btn.getAttribute('data-gallery-input');
+    const prevId = btn.getAttribute('data-preview-img');
+    const badgeId = btn.getAttribute('data-badge');
+
+    if (fileId) document.getElementById(fileId).value = '';
+    if (galId) document.getElementById(galId).value = '';
+    if (prevId) {
+      const prev = document.getElementById(prevId);
+      prev.classList.add('d-none');
+      const img = prev.querySelector('img');
+      if (img) img.src = '';
+    }
+    if (badgeId) {
+      const badge = document.getElementById(badgeId);
+      badge.textContent = 'None / Default';
+      badge.className = 'badge bg-light text-secondary border fw-normal';
+    }
+  });
+});
+
+// When user picks a file from device, update preview & badge
+['uploadFileThumbnail', 'editFileThumbnail'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('change', () => {
+    const isEdit = (id === 'editFileThumbnail');
+    const prevId = isEdit ? 'editThumbPreview' : 'uploadThumbPreview';
+    const badgeId = isEdit ? 'editThumbBadge' : 'uploadThumbBadge';
+    const galId = isEdit ? 'editGalleryThumbnail' : 'uploadGalleryThumbnail';
+
+    // Clear gallery input if local file picked
+    document.getElementById(galId).value = '';
+
+    if (el.files && el.files[0]) {
+      const file = el.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const prev = document.getElementById(prevId);
+        prev.querySelector('img').src = e.target.result;
+        prev.classList.remove('d-none');
+      };
+      reader.readAsDataURL(file);
+
+      const badge = document.getElementById(badgeId);
+      badge.textContent = 'Device: ' + file.name;
+      badge.className = 'badge bg-primary-subtle text-primary border border-primary-subtle fw-normal';
+    }
+  });
 });
 
 // Playlists Manager Handlers

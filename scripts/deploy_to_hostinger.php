@@ -59,6 +59,7 @@ $filesToDeploy = [
     'includes/sidebar.php',
     'includes/footer.php',
     'includes/SyncManager.php',
+    'api/gallery-images.php',
     'api/playlists.php',
     'api/folder-visibility.php',
     'api/upload.php',

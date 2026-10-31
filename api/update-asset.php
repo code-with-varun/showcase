@@ -42,6 +42,17 @@ $visibility = max(0, min(2, $visibility)); // clamp 0-2
 $isPublic   = ($visibility >= 1) ? 1 : 0; // legacy compatibility
 
 $thumbPath = $asset['thumbnail_path'];
+
+// 1. Check if user selected an existing image from Gallery
+if (!empty($_POST['selected_gallery_thumbnail'])) {
+    $galleryPath = trim($_POST['selected_gallery_thumbnail']);
+    // Validate path begins with assets/
+    if (str_starts_with($galleryPath, 'assets/') && file_exists(ROOT_DIR . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $galleryPath))) {
+        $thumbPath = $galleryPath;
+    }
+}
+
+// 2. Check if user uploaded a new thumbnail file from device
 if (!empty($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
     $thumbExt = strtolower(pathinfo($_FILES['thumbnail']['name'], PATHINFO_EXTENSION));
     $thumbName = 'thumb-' . $id . '-' . time() . '.' . $thumbExt;

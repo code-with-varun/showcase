@@ -87,6 +87,13 @@ if (!$categoryId) {
 
 // Handle optional thumbnail upload
 $thumbRelPath = null;
+if (!empty($_POST['selected_gallery_thumbnail'])) {
+    $galleryPath = trim($_POST['selected_gallery_thumbnail']);
+    if (str_starts_with($galleryPath, 'assets/') && file_exists(ROOT_DIR . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $galleryPath))) {
+        $thumbRelPath = $galleryPath;
+    }
+}
+
 if ($assetType === 'image') {
     $thumbRelPath = $relPath;
 } elseif (!empty($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
