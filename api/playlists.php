@@ -70,15 +70,34 @@ switch ($action) {
         $id = generatePlaylistId();
         $slug = slugify($title) . '-' . substr($id, 3, 4);
 
+        // Handle playlist thumbnail (gallery pick or device file)
+        $thumbPath = null;
+        if (!empty($_POST['selected_gallery_thumbnail'])) {
+            $gal = trim($_POST['selected_gallery_thumbnail']);
+            if (str_starts_with($gal, 'assets/') && file_exists(ROOT_DIR . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $gal))) {
+                $thumbPath = $gal;
+            }
+        }
+        if (!empty($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
+            $thumbExt = strtolower(pathinfo($_FILES['thumbnail']['name'], PATHINFO_EXTENSION));
+            $thumbName = 'thumb-pl-' . $id . '-' . time() . '.' . $thumbExt;
+            $thumbDest = THUMBNAILS_DIR . DIRECTORY_SEPARATOR . $thumbName;
+            if (!is_dir(THUMBNAILS_DIR)) mkdir(THUMBNAILS_DIR, 0777, true);
+            if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $thumbDest)) {
+                $thumbPath = 'assets/thumbnails/' . $thumbName;
+            }
+        }
+
         $stmt = $pdo->prepare("
-            INSERT INTO playlists (id, title, slug, description, visibility, created_at, updated_at)
-            VALUES (:id, :title, :slug, :desc, :vis, NOW(), NOW())
+            INSERT INTO playlists (id, title, slug, description, thumbnail_path, visibility, created_at, updated_at)
+            VALUES (:id, :title, :slug, :desc, :thumb, :vis, NOW(), NOW())
         ");
         $stmt->execute([
             ':id'    => $id,
             ':title' => $title,
             ':slug'  => $slug,
             ':desc'  => $description ?: null,
+            ':thumb' => $thumbPath,
             ':vis'   => $visibility,
         ]);
 
@@ -226,15 +245,45 @@ switch ($action) {
             exit;
         }
 
+        // Fetch current playlist for existing thumbnail
+        $currStmt = $pdo->prepare("SELECT thumbnail_path FROM playlists WHERE id = :id LIMIT 1");
+        $currStmt->execute([':id' => $id]);
+        $currentPl = $currStmt->fetch();
+        $thumbPath = $currentPl['thumbnail_path'] ?? null;
+
+        // Check gallery pick
+        if (isset($_POST['selected_gallery_thumbnail'])) {
+            $gal = trim($_POST['selected_gallery_thumbnail']);
+            if ($gal !== '') {
+                if (str_starts_with($gal, 'assets/') && file_exists(ROOT_DIR . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $gal))) {
+                    $thumbPath = $gal;
+                }
+            } elseif (isset($_POST['clear_thumbnail']) && $_POST['clear_thumbnail'] === '1') {
+                $thumbPath = null;
+            }
+        }
+
+        // Check device upload
+        if (!empty($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
+            $thumbExt = strtolower(pathinfo($_FILES['thumbnail']['name'], PATHINFO_EXTENSION));
+            $thumbName = 'thumb-pl-' . $id . '-' . time() . '.' . $thumbExt;
+            $thumbDest = THUMBNAILS_DIR . DIRECTORY_SEPARATOR . $thumbName;
+            if (!is_dir(THUMBNAILS_DIR)) mkdir(THUMBNAILS_DIR, 0777, true);
+            if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $thumbDest)) {
+                $thumbPath = 'assets/thumbnails/' . $thumbName;
+            }
+        }
+
         $upStmt = $pdo->prepare("
             UPDATE playlists 
-            SET title = :title, description = :desc, visibility = :vis, updated_at = NOW() 
+            SET title = :title, description = :desc, thumbnail_path = :thumb, visibility = :vis, updated_at = NOW() 
             WHERE id = :id
         ");
         $upStmt->execute([
             ':id'    => $id,
             ':title' => $title,
             ':desc'  => $description ?: null,
+            ':thumb' => $thumbPath,
             ':vis'   => $visibility,
         ]);
 

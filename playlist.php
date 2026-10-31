@@ -81,11 +81,12 @@ $firstVideoUrl = $firstVideo
     ? "{$baseUrl}/watch/" . ($firstVideo['slug'] ?: $firstVideo['id']) . "?list=" . ($playlist['slug'] ?: $playlist['id'])
     : "#";
 
-$playlistCover = $playlist['thumbnail_path'] 
+$hasCover = !empty($playlist['thumbnail_path']) || ($firstVideo && !empty($firstVideo['thumbnail_path']));
+$playlistCover = !empty($playlist['thumbnail_path']) 
     ? "{$baseUrl}/" . ltrim($playlist['thumbnail_path'], '/') 
-    : ($firstVideo && $firstVideo['thumbnail_path'] 
+    : ($firstVideo && !empty($firstVideo['thumbnail_path']) 
         ? "{$baseUrl}/" . ltrim($firstVideo['thumbnail_path'], '/') 
-        : "{$baseUrl}/assets/thumbnails/thumb-flowcv.png");
+        : "");
 
 $canonicalUrl = "{$baseUrl}/playlist/" . ($playlist['slug'] ?: $playlist['id']);
 $visInfo = getVisibilityLabel($visibility);
@@ -132,8 +133,15 @@ include __DIR__ . '/includes/header.php';
     <div class="col-lg-4 col-xl-3">
       <div class="card border-light-subtle shadow-sm bg-white p-3 p-xl-4 rounded-4 position-sticky" style="top: calc(var(--topbar-height) + 1rem);">
         <!-- Playlist Cover -->
-        <div class="position-relative rounded-3 overflow-hidden shadow-sm mb-3" style="aspect-ratio: 16/9; background: #000;">
-          <img src="<?= $playlistCover ?>" alt="<?= h($playlist['title']) ?>" style="width: 100%; height: 100%; object-fit: cover;">
+        <div class="position-relative rounded-3 overflow-hidden shadow-sm mb-3" style="aspect-ratio: 16/9; background: linear-gradient(135deg, #1e1e24 0%, #2a2a36 100%);">
+          <?php if ($hasCover && $playlistCover): ?>
+            <img src="<?= $playlistCover ?>" alt="<?= h($playlist['title']) ?>" style="width: 100%; height: 100%; object-fit: cover;">
+          <?php else: ?>
+            <div class="d-flex flex-column align-items-center justify-content-center h-100 text-white-50 p-3">
+              <i class="bi bi-collection-play-fill display-5 text-danger opacity-75 mb-1"></i>
+              <span class="small font-monospace text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px;">Playlist</span>
+            </div>
+          <?php endif; ?>
           <div class="position-absolute bottom-0 start-0 end-0 p-2 text-white d-flex align-items-center justify-content-between" style="background: linear-gradient(transparent, rgba(0,0,0,0.85));">
             <span class="small font-monospace"><i class="bi bi-collection-play me-1"></i><?= $videoCount ?> videos</span>
             <span class="small font-monospace"><?= formatTotalDuration($totalSeconds) ?></span>

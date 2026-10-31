@@ -453,6 +453,34 @@ include __DIR__ . '/includes/header.php';
                     </select>
                   </div>
 
+                  <!-- Playlist Thumbnail Selector -->
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark d-flex align-items-center justify-content-between mb-1">
+                      <span>Cover Poster (Optional)</span>
+                      <span class="badge bg-light text-secondary border fw-normal" id="createPlThumbBadge" style="font-size: 0.68rem;">Auto from 1st video</span>
+                    </label>
+                    <div class="card border border-light-subtle bg-white p-2">
+                      <div class="row g-1 align-items-center">
+                        <div class="col-12 mb-1">
+                          <input type="file" name="thumbnail" id="createPlFileThumbnail" accept="image/*" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-12 d-flex gap-1">
+                          <button type="button" class="btn btn-outline-dark btn-sm flex-grow-1 open-gallery-btn py-1" style="font-size: 0.72rem;" data-target-input="createPlGalleryThumbnail" data-preview-img="createPlThumbPreview" data-badge="createPlThumbBadge">
+                            <i class="bi bi-images me-1 text-primary"></i> Pick from Gallery
+                          </button>
+                          <button type="button" class="btn btn-outline-secondary btn-sm clear-thumb-btn py-1" data-file-input="createPlFileThumbnail" data-gallery-input="createPlGalleryThumbnail" data-preview-img="createPlThumbPreview" data-badge="createPlThumbBadge" title="Clear">
+                            <i class="bi bi-x-circle"></i>
+                          </button>
+                        </div>
+                      </div>
+                      <input type="hidden" name="selected_gallery_thumbnail" id="createPlGalleryThumbnail" value="">
+                      <div id="createPlThumbPreview" class="mt-2 d-none p-1 bg-light border rounded text-center">
+                        <img src="" alt="Cover Preview" style="max-height: 80px; border-radius: 4px; object-fit: cover;">
+                      </div>
+                    </div>
+                    <div class="form-text text-secondary" style="font-size: 0.68rem;">If not set, automatically inherits thumbnail from the 1st video.</div>
+                  </div>
+
                   <button type="submit" class="btn btn-danger btn-sm w-100 fw-semibold" id="createPlaylistBtn">
                     <i class="bi bi-plus-lg me-1"></i> Create Playlist
                   </button>
@@ -509,6 +537,7 @@ include __DIR__ . '/includes/header.php';
                                   data-title="<?= h($pl['title']) ?>" 
                                   data-desc="<?= h($pl['description'] ?? '') ?>" 
                                   data-vis="<?= $pl['visibility'] ?>" 
+                                  data-thumb="<?= h($pl['thumbnail_path'] ?? '') ?>" 
                                   title="Edit Playlist Details">
                             <i class="bi bi-pencil-square me-1"></i>Edit
                           </button>
@@ -1360,6 +1389,38 @@ include __DIR__ . '/includes/header.php';
               <option value="0">🔒 Private — admin only</option>
             </select>
           </div>
+
+          <!-- Edit Playlist Thumbnail Selector -->
+          <div class="mb-3">
+            <label class="form-label text-secondary small fw-bold d-flex align-items-center justify-content-between mb-1">
+              <span>Cover Poster</span>
+              <span class="badge bg-light text-secondary border fw-normal" id="editPlThumbBadge" style="font-size: 0.68rem;">Auto / Keep Current</span>
+            </label>
+            <div class="card border border-light-subtle bg-light p-2">
+              <div class="row g-2 align-items-center">
+                <div class="col-md-6">
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white"><i class="bi bi-upload"></i> Device</span>
+                    <input type="file" name="thumbnail" id="editPlFileThumbnail" accept="image/*" class="form-control bg-white">
+                  </div>
+                </div>
+                <div class="col-md-6 d-flex gap-2">
+                  <button type="button" class="btn btn-outline-dark btn-sm flex-grow-1 open-gallery-btn" data-target-input="editPlGalleryThumbnail" data-preview-img="editPlThumbPreview" data-badge="editPlThumbBadge">
+                    <i class="bi bi-images me-1 text-primary"></i> Pick from Gallery
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm clear-thumb-btn" data-file-input="editPlFileThumbnail" data-gallery-input="editPlGalleryThumbnail" data-preview-img="editPlThumbPreview" data-badge="editPlThumbBadge" data-clear-flag="editPlClearThumb" title="Reset to Auto">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                </div>
+              </div>
+              <input type="hidden" name="selected_gallery_thumbnail" id="editPlGalleryThumbnail" value="">
+              <input type="hidden" name="clear_thumbnail" id="editPlClearThumb" value="0">
+              <div id="editPlThumbPreview" class="mt-2 d-none p-1 bg-white border rounded text-center">
+                <img src="" alt="Playlist Cover Preview" style="max-height: 90px; border-radius: 4px; object-fit: cover;">
+              </div>
+            </div>
+            <div class="form-text text-secondary" style="font-size: 0.72rem;">If cleared, automatically inherits thumbnail from the 1st video in the playlist.</div>
+          </div>
         </div>
         <div class="modal-footer border-top border-light-subtle">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
@@ -1748,9 +1809,11 @@ document.querySelectorAll('.clear-thumb-btn').forEach(btn => {
     const galId = btn.getAttribute('data-gallery-input');
     const prevId = btn.getAttribute('data-preview-img');
     const badgeId = btn.getAttribute('data-badge');
+    const clearFlag = btn.getAttribute('data-clear-flag');
 
     if (fileId) document.getElementById(fileId).value = '';
     if (galId) document.getElementById(galId).value = '';
+    if (clearFlag) document.getElementById(clearFlag).value = '1';
     if (prevId) {
       const prev = document.getElementById(prevId);
       prev.classList.add('d-none');
@@ -1759,24 +1822,39 @@ document.querySelectorAll('.clear-thumb-btn').forEach(btn => {
     }
     if (badgeId) {
       const badge = document.getElementById(badgeId);
-      badge.textContent = 'None / Default';
+      badge.textContent = 'Auto / None';
       badge.className = 'badge bg-light text-secondary border fw-normal';
     }
   });
 });
 
 // When user picks a file from device, update preview & badge
-['uploadFileThumbnail', 'editFileThumbnail'].forEach(id => {
+['uploadFileThumbnail', 'editFileThumbnail', 'createPlFileThumbnail', 'editPlFileThumbnail'].forEach(id => {
   const el = document.getElementById(id);
   if (!el) return;
   el.addEventListener('change', () => {
-    const isEdit = (id === 'editFileThumbnail');
-    const prevId = isEdit ? 'editThumbPreview' : 'uploadThumbPreview';
-    const badgeId = isEdit ? 'editThumbBadge' : 'uploadThumbBadge';
-    const galId = isEdit ? 'editGalleryThumbnail' : 'uploadGalleryThumbnail';
+    let prevId = 'uploadThumbPreview';
+    let badgeId = 'uploadThumbBadge';
+    let galId = 'uploadGalleryThumbnail';
+
+    if (id === 'editFileThumbnail') {
+      prevId = 'editThumbPreview';
+      badgeId = 'editThumbBadge';
+      galId = 'editGalleryThumbnail';
+    } else if (id === 'createPlFileThumbnail') {
+      prevId = 'createPlThumbPreview';
+      badgeId = 'createPlThumbBadge';
+      galId = 'createPlGalleryThumbnail';
+    } else if (id === 'editPlFileThumbnail') {
+      prevId = 'editPlThumbPreview';
+      badgeId = 'editPlThumbBadge';
+      galId = 'editPlGalleryThumbnail';
+      document.getElementById('editPlClearThumb').value = '0';
+    }
 
     // Clear gallery input if local file picked
-    document.getElementById(galId).value = '';
+    const galInput = document.getElementById(galId);
+    if (galInput) galInput.value = '';
 
     if (el.files && el.files[0]) {
       const file = el.files[0];
@@ -1789,8 +1867,10 @@ document.querySelectorAll('.clear-thumb-btn').forEach(btn => {
       reader.readAsDataURL(file);
 
       const badge = document.getElementById(badgeId);
-      badge.textContent = 'Device: ' + file.name;
-      badge.className = 'badge bg-primary-subtle text-primary border border-primary-subtle fw-normal';
+      if (badge) {
+        badge.textContent = 'Device: ' + file.name;
+        badge.className = 'badge bg-primary-subtle text-primary border border-primary-subtle fw-normal';
+      }
     }
   });
 });
@@ -1832,6 +1912,33 @@ document.querySelectorAll('.edit-playlist-btn').forEach(btn => {
     document.getElementById('editPlTitle').value = title;
     document.getElementById('editPlDesc').value = desc;
     document.getElementById('editPlVis').value = vis;
+
+    // Reset and populate edit playlist thumbnail
+    const thumb = btn.getAttribute('data-thumb') || '';
+    const fileIn = document.getElementById('editPlFileThumbnail');
+    const galIn = document.getElementById('editPlGalleryThumbnail');
+    const prevEl = document.getElementById('editPlThumbPreview');
+    const badgeEl = document.getElementById('editPlThumbBadge');
+    document.getElementById('editPlClearThumb').value = '0';
+
+    if (fileIn) fileIn.value = '';
+    if (galIn) galIn.value = thumb;
+    if (thumb) {
+      if (prevEl) {
+        prevEl.querySelector('img').src = '<?= $baseUrl ?>/' + thumb.replace(/^\/+/, '');
+        prevEl.classList.remove('d-none');
+      }
+      if (badgeEl) {
+        badgeEl.textContent = 'Custom Cover';
+        badgeEl.className = 'badge bg-success-subtle text-success border border-success-subtle fw-normal';
+      }
+    } else {
+      if (prevEl) prevEl.classList.add('d-none');
+      if (badgeEl) {
+        badgeEl.textContent = 'Auto from 1st video';
+        badgeEl.className = 'badge bg-light text-secondary border fw-normal';
+      }
+    }
 
     const modalEl = document.getElementById('editPlaylistModal');
     editPlaylistModalInstance = new bootstrap.Modal(modalEl);
