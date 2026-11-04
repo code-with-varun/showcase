@@ -12,6 +12,10 @@
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
+    # Dynamic XML Sitemap & Robots.txt
+    RewriteRule ^sitemap\.xml$ sitemap.php [L]
+    RewriteRule ^robots\.txt$ robots.txt [L]
+
     # Clean Category Feeds
     RewriteRule ^videos/?$ index.php?type=video [QSA,L]
     RewriteRule ^playlists/?$ index.php?type=playlist [QSA,L]

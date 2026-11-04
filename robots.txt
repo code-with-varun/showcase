@@ -1,0 +1,38 @@
+User-agent: *
+Allow: /
+
+# Disallow Superadmin Studio & APIs from Search Indexing
+Disallow: /studio
+Disallow: /admin
+Disallow: /creator
+Disallow: /login
+Disallow: /admin/login
+Disallow: /settings
+Disallow: /api/
+Disallow: /config/
+Disallow: /scripts/
+
+# Allow Googlebot to Crawl Videos & Images for Rich Search Results
+User-agent: Googlebot
+Allow: /
+Allow: /watch/
+Allow: /playlist/
+Allow: /videos
+Allow: /playlists
+Allow: /images
+Allow: /documents
+Allow: /assets/
+
+User-agent: Googlebot-Video
+Allow: /
+Allow: /watch/
+Allow: /assets/videos/
+Allow: /assets/thumbnails/
+
+User-agent: Googlebot-Image
+Allow: /
+Allow: /assets/images/
+Allow: /assets/thumbnails/
+
+# Google Search Console XML Sitemap
+Sitemap: https://runito.in/showcase/sitemap.xml

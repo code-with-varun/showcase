@@ -72,3 +72,4 @@ echo json_encode([
     'success' => true,
     'images'  => $gallery
 ]);
+

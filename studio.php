@@ -262,6 +262,12 @@ include __DIR__ . '/includes/header.php';
             <span class="badge bg-warning-subtle text-dark border border-warning-subtle ms-1" id="foldersTabBadge"><?= count($allFolders) ?></span>
           </button>
         </li>
+        <li class="nav-item flex-shrink-0" role="presentation">
+          <button class="nav-link text-secondary fw-semibold border-0" id="seo-tools-tab" data-bs-toggle="tab" data-bs-target="#seo-tools-panel" type="button" role="tab">
+            <i class="bi bi-google text-primary me-1"></i> SEO & Sitemaps
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1">XML</span>
+          </button>
+        </li>
       </ul>
     </div>
 
@@ -272,24 +278,26 @@ include __DIR__ . '/includes/header.php';
         <div class="tab-pane fade show active" id="web-upload" role="tabpanel">
           <form id="webUploadForm" enctype="multipart/form-data">
             <div class="row g-3">
-              <!-- Drag and drop zone -->
+              <!-- Drag and drop zone (supports multiple files) -->
               <div class="col-12">
                 <div class="p-4 border border-secondary-subtle border-dashed rounded-3 text-center bg-light" id="dropZone" style="cursor: pointer; border-style: dashed !important;">
                   <i class="bi bi-cloud-arrow-up display-4 text-danger mb-2 d-block"></i>
                   <h5 class="text-dark mb-1">Choose or drag & drop files to upload</h5>
-                  <p class="text-secondary small mb-2">Supports MP4, WebM, PNG, JPG, WebP, PDF, DOCX, ZIP files</p>
-                  <input type="file" id="fileInput" name="file" class="d-none" required>
-                  <button type="button" class="btn btn-outline-danger btn-sm" onclick="document.getElementById('fileInput').click()">
-                    Browse Files
+                  <p class="text-secondary small mb-2">Select one or <strong>multiple files</strong> at once (MP4, WebM, PNG, JPG, WebP, PDF, DOCX, ZIP)</p>
+                  <input type="file" id="fileInput" name="files[]" class="d-none" multiple required>
+                  <button type="button" class="btn btn-outline-danger btn-sm px-3" onclick="document.getElementById('fileInput').click()">
+                    <i class="bi bi-folder2-open me-1"></i> Browse Files
                   </button>
                   <div id="selectedFileInfo" class="mt-2 text-danger fw-bold small"></div>
+                  <!-- Multi-file selected list badge container -->
+                  <div id="multiFilesList" class="mt-2 d-flex flex-wrap gap-1 justify-content-center d-none"></div>
                 </div>
               </div>
 
               <!-- Metadata fields -->
               <div class="col-md-6">
-                <label class="form-label text-secondary small fw-bold">Title (optional, auto-derived if blank)</label>
-                <input type="text" name="title" id="uploadTitle" class="form-control bg-light text-dark border-secondary-subtle" placeholder="e.g. Episode 1: The Beginning">
+                <label class="form-label text-secondary small fw-bold">Title (optional, auto-derived from filename)</label>
+                <input type="text" name="title" id="uploadTitle" class="form-control bg-light text-dark border-secondary-subtle" placeholder="Leave blank to use original filenames">
               </div>
 
               <div class="col-md-6">
@@ -817,6 +825,152 @@ include __DIR__ . '/includes/header.php';
               <?php endforeach; ?>
             </div>
           <?php endif; ?>
+        </div>
+
+        <!-- TAB 5: SEO & GOOGLE SEARCH CONSOLE TOOLS -->
+        <div class="tab-pane fade" id="seo-tools-panel" role="tabpanel">
+          <div class="row g-4">
+            
+            <!-- Left Column: XML Sitemap Controls -->
+            <div class="col-lg-6">
+              <div class="p-4 border border-light-subtle rounded-3 bg-light h-100">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                  <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-diagram-3-fill text-danger fs-5"></i>
+                    <span>Google Video & Image XML Sitemap</span>
+                  </h6>
+                  <span class="badge bg-success-subtle text-success border border-success-subtle" id="seoStatusBadge">
+                    <i class="bi bi-check-circle me-1"></i>Active
+                  </span>
+                </div>
+
+                <p class="text-secondary small mb-3">
+                  Google Search Console requires a structured XML sitemap containing canonical URLs, video runtimes, publication dates, and image references for rich snippets.
+                </p>
+
+                <!-- Stats Grid -->
+                <div class="row g-2 mb-3">
+                  <div class="col-6 col-sm-3">
+                    <div class="p-2 bg-white rounded border border-light-subtle text-center">
+                      <div class="text-secondary" style="font-size: 0.68rem;">PUBLIC VIDEOS</div>
+                      <div class="fw-bold fs-5 text-danger" id="seoPublicVideos">—</div>
+                    </div>
+                  </div>
+                  <div class="col-6 col-sm-3">
+                    <div class="p-2 bg-white rounded border border-light-subtle text-center">
+                      <div class="text-secondary" style="font-size: 0.68rem;">PUBLIC IMAGES</div>
+                      <div class="fw-bold fs-5 text-primary" id="seoPublicImages">—</div>
+                    </div>
+                  </div>
+                  <div class="col-6 col-sm-3">
+                    <div class="p-2 bg-white rounded border border-light-subtle text-center">
+                      <div class="text-secondary" style="font-size: 0.68rem;">PLAYLISTS</div>
+                      <div class="fw-bold fs-5 text-success" id="seoPublicPlaylists">—</div>
+                    </div>
+                  </div>
+                  <div class="col-6 col-sm-3">
+                    <div class="p-2 bg-white rounded border border-light-subtle text-center">
+                      <div class="text-secondary" style="font-size: 0.68rem;">TOTAL URLS</div>
+                      <div class="fw-bold fs-5 text-dark" id="seoTotalUrls">—</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- URL link bar -->
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-dark mb-1">Your Google Sitemap Endpoint</label>
+                  <div class="input-group input-group-sm">
+                    <input type="text" class="form-control font-monospace bg-white text-dark" id="sitemapUrlInput" value="<?= $baseUrl ?>/sitemap.xml" readonly>
+                    <a href="<?= $baseUrl ?>/sitemap.xml" target="_blank" class="btn btn-outline-secondary" title="View XML in Browser">
+                      <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                    <button type="button" class="btn btn-outline-dark" onclick="navigator.clipboard.writeText(document.getElementById('sitemapUrlInput').value); showToast('Sitemap URL copied!');" title="Copy URL">
+                      <i class="bi bi-clipboard"></i> Copy
+                    </button>
+                  </div>
+                  <div class="form-text text-secondary" style="font-size: 0.72rem;">
+                    Submit this exact URL in your <strong>Google Search Console &gt; Sitemaps</strong> dashboard.
+                  </div>
+                </div>
+
+                <!-- Action Button -->
+                <button type="button" class="btn btn-danger w-100 fw-semibold shadow-sm py-2" id="generateSitemapBtn">
+                  <i class="bi bi-arrow-repeat me-1"></i> Update &amp; Rebuild Sitemap.xml Now
+                </button>
+                <div id="sitemapBuildReport" class="mt-2 small text-secondary font-monospace text-center"></div>
+              </div>
+            </div>
+
+            <!-- Right Column: Robots.txt & Crawler Directives -->
+            <div class="col-lg-6">
+              <div class="p-4 border border-light-subtle rounded-3 bg-light h-100 d-flex flex-column">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                  <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-robot text-dark fs-5"></i>
+                    <span>Crawler Directives (robots.txt)</span>
+                  </h6>
+                  <a href="<?= $baseUrl ?>/robots.txt" target="_blank" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 0.75rem;">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Live robots.txt
+                  </a>
+                </div>
+
+                <p class="text-secondary small mb-2">
+                  Instructs Googlebot, Googlebot-Video, and Googlebot-Image what to crawl and shields your admin studio from public search results.
+                </p>
+
+                <div class="flex-grow-1 mb-3">
+                  <textarea class="form-control font-monospace small bg-white text-dark" id="robotsTxtEditor" rows="9" style="font-size: 0.75rem; line-height: 1.45;">User-agent: *
+Allow: /
+
+# Disallow Superadmin Studio & APIs from Search Indexing
+Disallow: /studio
+Disallow: /admin
+Disallow: /creator
+Disallow: /login
+Disallow: /admin/login
+Disallow: /settings
+Disallow: /api/
+Disallow: /config/
+Disallow: /scripts/
+
+# Allow Googlebot to Crawl Videos & Images
+User-agent: Googlebot
+Allow: /
+Allow: /watch/
+Allow: /playlist/
+Allow: /videos
+Allow: /playlists
+Allow: /images
+Allow: /documents
+Allow: /assets/
+
+User-agent: Googlebot-Video
+Allow: /
+Allow: /watch/
+Allow: /assets/videos/
+Allow: /assets/thumbnails/
+
+User-agent: Googlebot-Image
+Allow: /
+Allow: /assets/images/
+Allow: /assets/thumbnails/
+
+# Google Search Console XML Sitemap
+Sitemap: <?= $baseUrl ?>/sitemap.xml</textarea>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                  <span class="small text-secondary" style="font-size: 0.72rem;">
+                    <i class="bi bi-shield-check text-success me-1"></i>Admin pages protected
+                  </span>
+                  <button type="button" class="btn btn-dark btn-sm px-3 fw-semibold" id="saveRobotsBtn">
+                    <i class="bi bi-save me-1"></i> Save robots.txt
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
         </div>
 
       </div>
@@ -1470,20 +1624,58 @@ include __DIR__ . '/includes/header.php';
 </div>
 
 <script>
-// File drop zone UX
+// File drop zone UX (Supports Multiple Files Drag & Drop)
 const fileInput = document.getElementById('fileInput');
 const dropZone = document.getElementById('dropZone');
 const selectedFileInfo = document.getElementById('selectedFileInfo');
 const uploadTitle = document.getElementById('uploadTitle');
+const multiFilesList = document.getElementById('multiFilesList');
 
-fileInput.addEventListener('change', () => {
-  if (fileInput.files.length > 0) {
-    const file = fileInput.files[0];
+function renderSelectedFiles(files) {
+  if (!files || files.length === 0) {
+    selectedFileInfo.textContent = '';
+    if (multiFilesList) {
+      multiFilesList.innerHTML = '';
+      multiFilesList.classList.add('d-none');
+    }
+    return;
+  }
+
+  let totalBytes = 0;
+  for (let i = 0; i < files.length; i++) {
+    totalBytes += files[i].size;
+  }
+  const totalMb = (totalBytes / 1024 / 1024).toFixed(2);
+
+  if (files.length === 1) {
+    const file = files[0];
     selectedFileInfo.textContent = `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
     if (!uploadTitle.value) {
       uploadTitle.value = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
     }
+    if (multiFilesList) multiFilesList.classList.add('d-none');
+  } else {
+    selectedFileInfo.textContent = `Selected ${files.length} files (${totalMb} MB total)`;
+    uploadTitle.value = ''; // Leave blank so each file gets its own natural title
+    uploadTitle.placeholder = `Uploading ${files.length} files (titles auto-derived)`;
+
+    if (multiFilesList) {
+      multiFilesList.classList.remove('d-none');
+      const badges = [];
+      const showCount = Math.min(files.length, 6);
+      for (let i = 0; i < showCount; i++) {
+        badges.push(`<span class="badge bg-white text-dark border small">${files[i].name}</span>`);
+      }
+      if (files.length > 6) {
+        badges.push(`<span class="badge bg-secondary text-white small">+${files.length - 6} more</span>`);
+      }
+      multiFilesList.innerHTML = badges.join(' ');
+    }
   }
+}
+
+fileInput.addEventListener('change', () => {
+  renderSelectedFiles(fileInput.files);
 });
 
 dropZone.addEventListener('dragover', (e) => {
@@ -1500,7 +1692,7 @@ dropZone.addEventListener('drop', (e) => {
   dropZone.classList.remove('bg-secondary-subtle');
   if (e.dataTransfer.files.length > 0) {
     fileInput.files = e.dataTransfer.files;
-    fileInput.dispatchEvent(new Event('change'));
+    renderSelectedFiles(fileInput.files);
   }
 });
 
@@ -1536,8 +1728,9 @@ webUploadForm.addEventListener('submit', (e) => {
     try {
       const resp = JSON.parse(xhr.responseText);
       if (resp.success) {
-        showToast('Asset uploaded successfully!');
-        setTimeout(() => window.location.reload(), 1000);
+        const count = resp.count || 1;
+        showToast(`Successfully uploaded ${count} asset(s)!`);
+        setTimeout(() => window.location.reload(), 1200);
       } else {
         showToast(resp.error || 'Upload failed', false);
       }
@@ -2352,6 +2545,88 @@ document.getElementById('applyBulkAssetVisBtn')?.addEventListener('click', () =>
     })
     .catch(err => {
       btn.disabled = false;
+      showToast('Error: ' + err.message, false);
+    });
+});
+
+// -------------------------------------------------------------
+// SEO & Google Search Console Tools Handler
+// -------------------------------------------------------------
+function loadSeoStats() {
+  fetch('api/seo-tools.php?action=status')
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.stats) {
+        const s = data.stats;
+        document.getElementById('seoPublicVideos').textContent = s.public_videos;
+        document.getElementById('seoPublicImages').textContent = s.public_images;
+        document.getElementById('seoPublicPlaylists').textContent = s.public_playlists;
+        document.getElementById('seoTotalUrls').textContent = s.total_public + s.public_playlists + 5;
+        document.getElementById('sitemapBuildReport').innerHTML = `Last Generated: <strong>${s.sitemap_updated}</strong> (${s.sitemap_size})`;
+      }
+    })
+    .catch(err => console.warn('SEO stats error:', err));
+}
+
+// Load stats when clicking SEO tab
+document.getElementById('seo-tools-tab')?.addEventListener('click', () => {
+  loadSeoStats();
+});
+
+// Generate Sitemap button
+document.getElementById('generateSitemapBtn')?.addEventListener('click', function() {
+  const btn = this;
+  const origHtml = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generating XML Sitemap...';
+  btn.disabled = true;
+
+  fetch('api/seo-tools.php?action=build_sitemap', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      btn.innerHTML = origHtml;
+      btn.disabled = false;
+      if (data.success) {
+        showToast('Sitemap XML rebuilt successfully!');
+        document.getElementById('sitemapBuildReport').innerHTML = `
+          <span class="text-success fw-bold">✓ Saved sitemap.xml (${(data.bytes / 1024).toFixed(1)} KB)</span>
+          &bull; <a href="${data.url}" target="_blank" class="text-decoration-underline text-danger">Open XML</a>
+        `;
+        loadSeoStats();
+      } else {
+        showToast(data.error || 'Failed to generate sitemap', false);
+      }
+    })
+    .catch(err => {
+      btn.innerHTML = origHtml;
+      btn.disabled = false;
+      showToast('Sitemap error: ' + err.message, false);
+    });
+});
+
+// Save robots.txt button
+document.getElementById('saveRobotsBtn')?.addEventListener('click', function() {
+  const btn = this;
+  const content = document.getElementById('robotsTxtEditor').value;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+  const fd = new FormData();
+  fd.append('content', content);
+
+  fetch('api/seo-tools.php?action=save_robots', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-save me-1"></i> Save robots.txt';
+      if (data.success) {
+        showToast('robots.txt saved successfully!');
+      } else {
+        showToast(data.error || 'Failed to save robots.txt', false);
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-save me-1"></i> Save robots.txt';
       showToast('Error: ' + err.message, false);
     });
 });
