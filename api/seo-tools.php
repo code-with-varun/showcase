@@ -96,3 +96,4 @@ switch ($action) {
         echo json_encode(['success' => false, 'error' => 'Invalid action']);
         break;
 }
+

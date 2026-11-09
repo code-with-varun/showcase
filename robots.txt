@@ -36,3 +36,4 @@ Allow: /assets/thumbnails/
 
 # Google Search Console XML Sitemap
 Sitemap: https://runito.in/showcase/sitemap.xml
+
