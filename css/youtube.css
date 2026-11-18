@@ -1617,12 +1617,12 @@ body.sidebar-mobile-open .yt-sidebar-backdrop {
 /* Floating Actions Bar on Right */
 .flick-actions-bar {
   position: absolute;
-  bottom: 24px;
-  right: 12px;
+  bottom: 40px;
+  right: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 0.85rem;
   z-index: 12;
 }
 
@@ -1636,6 +1636,9 @@ body.sidebar-mobile-open .yt-sidebar-backdrop {
   gap: 0.25rem;
   padding: 0;
   cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -1749,10 +1752,12 @@ body.sidebar-mobile-open .yt-sidebar-backdrop {
   .flicks-wrapper {
     padding: 0;
     min-height: calc(100vh - var(--topbar-height));
+    min-height: calc(100dvh - var(--topbar-height));
   }
   .flicks-feed {
     max-width: 100vw;
     height: calc(100vh - var(--topbar-height));
+    height: calc(100dvh - var(--topbar-height));
     max-height: none;
   }
   .flick-card {
@@ -1763,6 +1768,23 @@ body.sidebar-mobile-open .yt-sidebar-backdrop {
     height: 100%;
     border-radius: 0;
     aspect-ratio: unset;
+  }
+  .flick-actions-bar {
+    bottom: 72px; /* Lift buttons up on mobile so Expand is fully visible above browser toolbars */
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    right: 12px;
+    gap: 0.75rem;
+  }
+  .flick-action-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 1.15rem;
+  }
+  .flick-info-overlay {
+    bottom: 20px;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    left: 14px;
+    right: 76px;
   }
 }
 

@@ -34,23 +34,6 @@ $flicksStmt = $pdo->prepare("
 $flicksStmt->execute();
 $flicks = $flicksStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// If no flicks are marked is_flick=1 yet, fetch any short/portrait videos or recent videos as fallback demo
-$isFallbackDemo = false;
-if (empty($flicks)) {
-    $fallbackStmt = $pdo->prepare("
-        SELECT id, title, slug, description, copyright_info, file_path, file_name, 
-               file_size, thumbnail_path, duration_seconds, views_count, likes_count, 
-               visibility, created_at
-        FROM assets 
-        WHERE asset_type = 'video' AND $whereClause
-        ORDER BY created_at DESC 
-        LIMIT 10
-    ");
-    $fallbackStmt->execute();
-    $flicks = $fallbackStmt->fetchAll(PDO::FETCH_ASSOC);
-    $isFallbackDemo = true;
-}
-
 // If specific flick requested, reorder to put that flick first
 if ($requestedSlug !== '') {
     $foundIdx = -1;
@@ -79,24 +62,19 @@ include __DIR__ . '/includes/sidebar.php';
 ?>
 
 <div class="flicks-wrapper">
-  <!-- Desktop / Header Info Banner (Only when demo fallback is active) -->
-  <?php if ($isFallbackDemo && $isAdmin): ?>
-    <div class="alert alert-info alert-dismissible fade show mb-2 small shadow-sm mx-auto" style="max-width: 500px;" role="alert">
-      <i class="bi bi-info-circle-fill me-1"></i>
-      <strong>Creator Note:</strong> No videos are marked as <strong>Flicks</strong> yet. Showing recent videos as preview. You can mark any video as a Flick in <a href="<?= $baseUrl ?>/studio.php" class="alert-link">Creator Studio</a>.
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  <?php endif; ?>
-
   <?php if (empty($flicks)): ?>
-    <div class="container py-5 text-center">
+    <div class="container py-5 text-center my-auto">
       <div class="p-5 bg-white border border-light-subtle rounded-4 shadow-sm mx-auto" style="max-width: 520px;">
         <i class="bi bi-lightning-charge-fill display-1 text-warning mb-3 d-block"></i>
-        <h4 class="fw-bold text-dark mb-2">No Flicks Yet</h4>
-        <p class="text-secondary small mb-4">Short vertical videos will appear here. Upload a portrait video or mark any video as a Flick in Studio!</p>
-        <a href="<?= $baseUrl ?>/videos" class="btn btn-danger rounded-pill px-4 me-2">Browse Videos</a>
+        <h4 class="fw-bold text-dark mb-2">No Flicks Added Yet</h4>
+        <p class="text-secondary small mb-4">No vertical videos have been marked as Flicks. Only videos explicitly marked as Flicks in Creator Studio or uploaded with the Flick toggle will appear here.</p>
+        <a href="<?= $baseUrl ?>/videos" class="btn btn-danger rounded-pill px-4 me-2">
+          <i class="bi bi-play-circle me-1"></i> Browse Videos
+        </a>
         <?php if ($isAdmin): ?>
-          <a href="<?= $baseUrl ?>/studio.php" class="btn btn-outline-dark rounded-pill px-4">Studio</a>
+          <a href="<?= $baseUrl ?>/studio.php" class="btn btn-outline-dark rounded-pill px-4">
+            <i class="bi bi-camera-reels me-1"></i> Creator Studio
+          </a>
         <?php endif; ?>
       </div>
     </div>
