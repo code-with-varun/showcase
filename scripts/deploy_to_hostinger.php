@@ -54,7 +54,6 @@ $filesToDeploy = [
     'embed.php',
     'login.php',
     'logout.php',
-    'migrate.php',
     'schema.sql',
     'config/database.php',
     'config/auth.php',
