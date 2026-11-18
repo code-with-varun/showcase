@@ -173,13 +173,13 @@ include __DIR__ . '/includes/sidebar.php';
                 <span class="flick-action-count">Copy</span>
               </button>
 
-              <!-- Full Watch / Landscape Option -->
-              <a href="<?= $baseUrl ?>/watch/<?= $targetSlug ?>" class="flick-action-btn text-decoration-none" title="Open in Classic Player">
+              <!-- Fullscreen / Normal Toggle -->
+              <button type="button" class="flick-action-btn flick-fullscreen-btn" title="Toggle Fullscreen">
                 <div class="flick-action-icon">
-                  <i class="bi bi-arrows-angle-expand"></i>
+                  <i class="bi bi-fullscreen"></i>
                 </div>
-                <span class="flick-action-count">Expand</span>
-              </a>
+                <span class="flick-action-count flick-fullscreen-label">Full</span>
+              </button>
             </div>
 
           </div>
@@ -278,6 +278,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   cards.forEach(card => observer.observe(card));
 
+  // Pre-load liked IDs from localStorage
+  let likedIds = [];
+  try {
+    likedIds = JSON.parse(localStorage.getItem('runit_flicks_liked') || '[]');
+    if (!Array.isArray(likedIds)) likedIds = [];
+  } catch (e) {
+    likedIds = [];
+  }
+
   // Initialize videos
   cards.forEach((card, idx) => {
     const video = card.querySelector('.flick-video');
@@ -286,6 +295,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const soundBtn = card.querySelector('.flick-sound-btn');
     const heartAnim = card.querySelector('.flick-heart-anim');
     const progressFill = card.querySelector('.flick-progress-fill');
+    const cardId = card.getAttribute('data-id');
+    const likeBtn = card.querySelector('.flick-like-btn');
+
+    // Pre-mark liked state
+    if (likedIds.includes(cardId) && likeBtn) {
+      likeBtn.classList.add('liked');
+    }
 
     // Scrubber update
     video.addEventListener('timeupdate', () => {
@@ -308,9 +324,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const now = Date.now();
       if (now - lastTap < 300) {
-        // Double tap -> Like
-        triggerLike(card);
-        showHeartAnimation(heartAnim);
+        // Double tap -> Like (force like if not yet liked, else heart pulse)
+        triggerLike(card, true);
       } else {
         // Single tap -> Play / Pause
         if (video.paused) {
@@ -338,12 +353,18 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => el.classList.remove('show'), 800);
   }
 
-  // Like button handling
-  function triggerLike(card) {
+  // Like button handling (Toggle Like / Unlike)
+  function triggerLike(card, forceLikeOnly = false) {
     const btn = card.querySelector('.flick-like-btn');
     const id = card.getAttribute('data-id');
     const countEl = card.querySelector('.flick-like-count');
-    btn.classList.add('liked');
+    const heartAnim = card.querySelector('.flick-heart-anim');
+
+    const isAlreadyLiked = likedIds.includes(id);
+    if (forceLikeOnly && isAlreadyLiked) {
+      showHeartAnimation(heartAnim);
+      return;
+    }
 
     fetch('api/like.php', {
       method: 'POST',
@@ -352,8 +373,22 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .then(r => r.json())
     .then(data => {
-      if (data.success && data.likes) {
-        countEl.textContent = data.likes;
+      if (data.success) {
+        if (data.liked) {
+          if (!likedIds.includes(id)) likedIds.push(id);
+          btn.classList.add('liked');
+          showHeartAnimation(heartAnim);
+        } else {
+          likedIds = likedIds.filter(item => item !== id);
+          btn.classList.remove('liked');
+        }
+        try {
+          localStorage.setItem('runit_flicks_liked', JSON.stringify(likedIds));
+        } catch (e) {}
+
+        if (countEl) {
+          countEl.textContent = data.likes > 0 ? data.likes : 'Like';
+        }
       }
     })
     .catch(() => {});
@@ -363,7 +398,77 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const card = btn.closest('.flick-card');
-      triggerLike(card);
+      triggerLike(card, false);
+    });
+  });
+
+  // Fullscreen / Normal Toggle
+  function toggleFullscreen(card) {
+    const playerBox = card.querySelector('.flick-player-box');
+    const fsBtn = card.querySelector('.flick-fullscreen-btn');
+    const icon = fsBtn ? fsBtn.querySelector('.flick-action-icon i') : null;
+    const label = fsBtn ? fsBtn.querySelector('.flick-fullscreen-label') : null;
+
+    const isNativeFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    const isCssFs = playerBox.classList.contains('flick-fullscreen-active');
+
+    if (isNativeFs) {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    } else if (isCssFs) {
+      playerBox.classList.remove('flick-fullscreen-active');
+      document.body.classList.remove('flick-body-fullscreen');
+      updateFullscreenButtons(false);
+    } else {
+      // Try native fullscreen first
+      const req = playerBox.requestFullscreen || playerBox.webkitRequestFullscreen;
+      if (req) {
+        req.call(playerBox).catch(() => {
+          // Native denied or failed -> CSS fullscreen fallback
+          playerBox.classList.add('flick-fullscreen-active');
+          document.body.classList.add('flick-body-fullscreen');
+          updateFullscreenButtons(true);
+        });
+      } else {
+        // iOS Safari / non-supporting browsers -> CSS fullscreen fallback
+        playerBox.classList.add('flick-fullscreen-active');
+        document.body.classList.add('flick-body-fullscreen');
+        updateFullscreenButtons(true);
+      }
+    }
+  }
+
+  function updateFullscreenButtons(isFs) {
+    document.querySelectorAll('.flick-fullscreen-btn').forEach(b => {
+      const ic = b.querySelector('.flick-action-icon i');
+      const lb = b.querySelector('.flick-fullscreen-label');
+      if (ic) ic.className = isFs ? 'bi bi-fullscreen-exit' : 'bi bi-fullscreen';
+      if (lb) lb.textContent = isFs ? 'Exit' : 'Full';
+    });
+  }
+
+  // Listen for native fullscreen state changes
+  const onFsChange = () => {
+    const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    updateFullscreenButtons(isFs);
+    if (!isFs) {
+      document.querySelectorAll('.flick-player-box.flick-fullscreen-active').forEach(box => {
+        box.classList.remove('flick-fullscreen-active');
+      });
+      document.body.classList.remove('flick-body-fullscreen');
+    }
+  };
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
+
+  feed.querySelectorAll('.flick-fullscreen-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const card = btn.closest('.flick-card');
+      toggleFullscreen(card);
     });
   });
 

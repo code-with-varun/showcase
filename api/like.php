@@ -1,6 +1,6 @@
 <?php
 /**
- * API: Like counter incrementer
+ * API: Like counter incrementer & toggle
  */
 
 header('Content-Type: application/json');
@@ -15,15 +15,23 @@ if (!$id) {
 }
 
 $sessionKey = 'liked_' . $id;
-if (!empty($_SESSION[$sessionKey])) {
-    echo json_encode(['success' => false, 'alreadyLiked' => true]);
-    exit;
-}
+$isCurrentlyLiked = !empty($_SESSION[$sessionKey]);
 
-$_SESSION[$sessionKey] = true;
 $pdo = getDB();
-$stmt = $pdo->prepare("UPDATE assets SET likes_count = likes_count + 1 WHERE id = :id");
-$stmt->execute([':id' => $id]);
+
+if ($isCurrentlyLiked) {
+    // Already liked -> Toggle OFF (Unlike)
+    unset($_SESSION[$sessionKey]);
+    $stmt = $pdo->prepare("UPDATE assets SET likes_count = GREATEST(0, CAST(likes_count AS SIGNED) - 1) WHERE id = :id");
+    $stmt->execute([':id' => $id]);
+    $liked = false;
+} else {
+    // Not yet liked -> Toggle ON (Like)
+    $_SESSION[$sessionKey] = true;
+    $stmt = $pdo->prepare("UPDATE assets SET likes_count = likes_count + 1 WHERE id = :id");
+    $stmt->execute([':id' => $id]);
+    $liked = true;
+}
 
 $getStmt = $pdo->prepare("SELECT likes_count FROM assets WHERE id = :id LIMIT 1");
 $getStmt->execute([':id' => $id]);
@@ -31,5 +39,6 @@ $row = $getStmt->fetch();
 
 echo json_encode([
     'success' => true,
+    'liked'   => $liked,
     'likes'   => (int)($row['likes_count'] ?? 0)
 ]);
