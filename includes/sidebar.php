@@ -13,7 +13,8 @@ $isAdmin = (function_exists('isAdminLoggedIn') && isAdminLoggedIn());
 if ($isAdmin) {
     $statStmt = $pdo->query("
         SELECT 
-            SUM(CASE WHEN asset_type = 'video' THEN 1 ELSE 0 END) AS count_videos,
+            SUM(CASE WHEN asset_type = 'video' AND (is_flick = 0 OR is_flick IS NULL) THEN 1 ELSE 0 END) AS count_videos,
+            SUM(CASE WHEN is_flick = 1 THEN 1 ELSE 0 END) AS count_flicks,
             SUM(CASE WHEN asset_type = 'image' THEN 1 ELSE 0 END) AS count_images,
             SUM(CASE WHEN asset_type IN ('document', 'archive') THEN 1 ELSE 0 END) AS count_docs_zips
         FROM assets
@@ -21,7 +22,8 @@ if ($isAdmin) {
 } else {
     $statStmt = $pdo->query("
         SELECT 
-            SUM(CASE WHEN asset_type = 'video' THEN 1 ELSE 0 END) AS count_videos,
+            SUM(CASE WHEN asset_type = 'video' AND (is_flick = 0 OR is_flick IS NULL) THEN 1 ELSE 0 END) AS count_videos,
+            SUM(CASE WHEN is_flick = 1 THEN 1 ELSE 0 END) AS count_flicks,
             SUM(CASE WHEN asset_type = 'image' THEN 1 ELSE 0 END) AS count_images,
             SUM(CASE WHEN asset_type IN ('document', 'archive') THEN 1 ELSE 0 END) AS count_docs_zips
         FROM assets
@@ -29,13 +31,14 @@ if ($isAdmin) {
     ");
 }
 $sidebarStats = $statStmt->fetch() ?: [
-    'count_videos' => 0, 'count_images' => 0, 'count_docs_zips' => 0
+    'count_videos' => 0, 'count_flicks' => 0, 'count_images' => 0, 'count_docs_zips' => 0
 ];
 
 $plCountStmt = $pdo->query($isAdmin ? "SELECT COUNT(*) FROM playlists" : "SELECT COUNT(*) FROM playlists WHERE visibility = 2");
 $countPlaylists = (int)$plCountStmt->fetchColumn();
 
 $currentType = $_GET['type'] ?? '';
+$isFlicksPage = ($currentType === 'flicks' || basename($_SERVER['PHP_SELF']) === 'flicks.php');
 ?>
 <aside class="yt-sidebar" id="ytSidebar">
   <div class="d-flex flex-column h-100">
@@ -63,6 +66,13 @@ $currentType = $_GET['type'] ?? '';
         <i class="bi bi-collection-play-fill text-danger"></i>
         <span class="nav-text">Playlists</span>
         <span class="badge bg-secondary ms-auto small nav-text"><?= (int)$countPlaylists ?></span>
+      </a>
+
+      <!-- FLICKS (YouTube Shorts style portrait videos) -->
+      <a class="nav-link <?= $isFlicksPage ? 'active' : '' ?>" href="<?= $baseUrl ?>/flicks">
+        <i class="bi bi-lightning-charge-fill text-warning"></i>
+        <span class="nav-text fw-semibold">Flicks</span>
+        <span class="badge bg-danger ms-auto small nav-text"><?= (int)$sidebarStats['count_flicks'] ?></span>
       </a>
 
       <!-- IMAGES -->

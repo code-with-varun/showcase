@@ -40,7 +40,7 @@ class SyncManager {
         $stats['scanned'] = count($filesOnDisk);
 
         // Fetch all existing file paths from MySQL
-        $stmt = $this->pdo->query("SELECT id, file_path, file_size, project FROM assets");
+        $stmt = $this->pdo->query("SELECT id, file_path, file_size, project, is_flick FROM assets");
         $existingAssets = [];
         while ($row = $stmt->fetch()) {
             $normalized = str_replace('\\', '/', $row['file_path']);
@@ -58,6 +58,14 @@ class SyncManager {
             $categoryId = $this->resolveCategoryId($relativePath, $assetType, $categories);
             $project = $this->detectProject($relativePath, $assetType);
 
+            $isFlick = 0;
+            if ($assetType === 'video') {
+                $normPath = strtolower($relativePath);
+                if (str_contains($normPath, 'flick') || str_contains($normPath, 'short') || str_contains($normPath, 'reel')) {
+                    $isFlick = 1;
+                }
+            }
+
             if (isset($existingAssets[$relativePath])) {
                 // Already in database -> check if size changed or project needs backfilling
                 $existing = $existingAssets[$relativePath];
@@ -73,6 +81,10 @@ class SyncManager {
                 if (empty($existing['project']) && $project) {
                     $updateFields[] = "project = :project";
                     $updateParams[':project'] = $project;
+                    $needsUpdate = true;
+                }
+                if ($assetType === 'video' && empty($existing['is_flick']) && $isFlick === 1) {
+                    $updateFields[] = "is_flick = 1";
                     $needsUpdate = true;
                 }
 
@@ -99,11 +111,11 @@ class SyncManager {
                     INSERT INTO assets (
                         id, title, slug, description, asset_type, category_id, project,
                         file_path, file_name, file_size, mime_type, extension,
-                        thumbnail_path, source, visibility, is_public, created_at, updated_at
+                        thumbnail_path, source, visibility, is_public, is_flick, created_at, updated_at
                     ) VALUES (
                         :id, :title, :slug, :desc, :type, :cat_id, :project,
                         :path, :filename, :size, :mime, :ext,
-                        :thumb, 'ftp_sync', :vis, :pub, NOW(), NOW()
+                        :thumb, 'ftp_sync', :vis, :pub, :is_flick, NOW(), NOW()
                     )
                 ");
 
@@ -123,6 +135,7 @@ class SyncManager {
                     ':thumb'    => $thumbnailPath,
                     ':vis'      => $folderVis,
                     ':pub'      => $isPublic,
+                    ':is_flick' => $isFlick,
                 ]);
 
                 // Add default tags

@@ -40,6 +40,7 @@ $duration      = isset($_POST['duration_seconds']) ? (int)$_POST['duration_secon
 $visibility = isset($_POST['visibility']) ? (int)$_POST['visibility'] : ($asset['visibility'] ?? 2);
 $visibility = max(0, min(2, $visibility)); // clamp 0-2
 $isPublic   = ($visibility >= 1) ? 1 : 0; // legacy compatibility
+$isFlick    = isset($_POST['is_flick']) ? (int)(bool)$_POST['is_flick'] : 0;
 
 $thumbPath = $asset['thumbnail_path'];
 
@@ -69,6 +70,7 @@ $upStmt = $pdo->prepare("
     SET title = :title, description = :desc, copyright_info = :copyright,
         category_id = :cat, project = :proj,
         thumbnail_path = :thumb, visibility = :visibility, is_public = :pub,
+        is_flick = :is_flick,
         duration_seconds = :dur, updated_at = NOW()
     WHERE id = :id
 ");
@@ -81,6 +83,7 @@ $upStmt->execute([
     ':thumb'      => $thumbPath,
     ':visibility' => $visibility,
     ':pub'        => $isPublic,
+    ':is_flick'   => ($asset['asset_type'] === 'video' ? $isFlick : 0),
     ':dur'        => $duration,
     ':id'         => $id
 ]);

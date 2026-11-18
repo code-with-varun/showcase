@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS `assets` (
   `thumbnail_path` VARCHAR(500) NULL,
   `duration_seconds` INT UNSIGNED DEFAULT 0,
   `resolution` VARCHAR(50) NULL,
+  `is_flick` TINYINT(1) DEFAULT 0 COMMENT '1=Vertical portrait short (Flick), 0=Standard video',
   `views_count` BIGINT UNSIGNED DEFAULT 0,
   `likes_count` INT UNSIGNED DEFAULT 0,
   `visibility` TINYINT(1) DEFAULT 1 COMMENT '0=private(admin only), 1=unlisted(link only, default), 2=public(everyone)',

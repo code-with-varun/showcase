@@ -12,8 +12,8 @@
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/config/auth.php';
 
-// Security: Only allow admin to run this
-if (!isAdminLoggedIn()) {
+// Security: Only allow admin or CLI to run this
+if (php_sapi_name() !== 'cli' && !isAdminLoggedIn()) {
     die('<h2>Access denied. Please <a href="login.php">log in as admin</a> first.</h2>');
 }
 
@@ -26,7 +26,7 @@ function runSql(PDO $pdo, string $label, string $sql): string {
         $pdo->exec($sql);
         return "<tr><td>✅</td><td>{$label}</td><td class='text-success'>OK</td></tr>";
     } catch (PDOException $e) {
-        if (str_contains($e->getMessage(), 'Duplicate column') || str_contains($e->getMessage(), 'already exists')) {
+        if (str_contains($e->getMessage(), 'Duplicate column') || str_contains($e->getMessage(), 'Duplicate key') || str_contains($e->getMessage(), 'already exists')) {
             return "<tr><td>⏭️</td><td>{$label}</td><td class='text-warning'>Already exists — skipped</td></tr>";
         }
         return "<tr><td>❌</td><td>{$label}</td><td class='text-danger'>" . htmlspecialchars($e->getMessage()) . "</td></tr>";
@@ -90,6 +90,17 @@ $steps[] = runSql($pdo, 'Create playlist_items table',
       INDEX idx_pi_asset (asset_id),
       INDEX idx_pi_position (position)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+);
+
+// Step 8: Add is_flick column to assets table
+$steps[] = runSql($pdo, 'Add is_flick column (Shorts/Portrait videos)',
+    "ALTER TABLE assets ADD COLUMN is_flick TINYINT(1) NOT NULL DEFAULT 0 
+     COMMENT '1=Vertical portrait short (Flick), 0=Standard video'"
+);
+
+// Step 9: Add index on is_flick
+$steps[] = runSql($pdo, 'Add index on is_flick',
+    "ALTER TABLE assets ADD INDEX idx_is_flick (is_flick)"
 );
 
 // Verify

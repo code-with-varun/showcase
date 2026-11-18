@@ -1478,6 +1478,295 @@ body.sidebar-mobile-open .yt-sidebar-backdrop {
   color: #cc0000 !important;
 }
 
+/* ==========================================================================
+   FLICKS (YouTube Shorts style portrait player)
+   ========================================================================== */
+.flicks-wrapper {
+  width: 100%;
+  min-height: calc(100vh - var(--topbar-height) - 40px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0 2rem 0;
+}
+
+.flicks-feed {
+  width: 100%;
+  max-width: 520px;
+  height: calc(100vh - var(--topbar-height) - 30px);
+  max-height: 840px;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  position: relative;
+}
+
+.flicks-feed::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+.flick-card {
+  width: 100%;
+  height: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 0.5rem 0;
+}
+
+.flick-player-box {
+  width: 100%;
+  max-width: 440px;
+  height: 100%;
+  aspect-ratio: 9/16;
+  background-color: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  position: relative;
+}
+
+.flick-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.backdrop-blur {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.flick-top-bar {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+}
+
+.flick-sound-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  transition: transform 0.2s ease;
+}
+.flick-sound-btn:hover {
+  transform: scale(1.1);
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.flick-progress-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.25);
+  z-index: 10;
+}
+
+.flick-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #ff0000;
+  transition: width 0.1s linear;
+}
+
+.flick-info-overlay {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 68px; /* Leave room for floating actions */
+  z-index: 10;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+  padding: 1.5rem 0.5rem 0.5rem 0.5rem;
+  pointer-events: none;
+}
+
+.flick-info-overlay * {
+  pointer-events: auto;
+}
+
+.flick-title {
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  font-size: 1rem;
+}
+
+.flick-desc {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  font-size: 0.82rem;
+}
+
+/* Floating Actions Bar on Right */
+.flick-actions-bar {
+  position: absolute;
+  bottom: 24px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  z-index: 12;
+}
+
+.flick-action-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.flick-action-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  transition: all 0.2s ease;
+}
+
+.flick-action-btn:hover .flick-action-icon {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.flick-action-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+}
+
+.flick-action-btn.liked .flick-action-icon {
+  background: #ff0000;
+  border-color: #ff0000;
+}
+.flick-action-btn.liked .flick-action-icon i {
+  color: #fff;
+}
+
+/* State Icon Overlay (Play/Pause) */
+.flick-state-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.6);
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  z-index: 15;
+}
+
+.flick-state-icon.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Double-Tap Heart Animation */
+.flick-heart-anim {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  font-size: 5rem;
+  color: #ff0000;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 20;
+}
+
+.flick-heart-anim.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.3);
+  animation: heartFadeOut 0.8s forwards;
+}
+
+@keyframes heartFadeOut {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+
+/* Desktop Side Nav Arrows */
+.flick-desktop-nav {
+  position: absolute;
+  right: -58px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 15;
+}
+
+.flick-desktop-nav .btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 767.98px) {
+  .flicks-wrapper {
+    padding: 0;
+    min-height: calc(100vh - var(--topbar-height));
+  }
+  .flicks-feed {
+    max-width: 100vw;
+    height: calc(100vh - var(--topbar-height));
+    max-height: none;
+  }
+  .flick-card {
+    padding: 0;
+  }
+  .flick-player-box {
+    max-width: 100vw;
+    height: 100%;
+    border-radius: 0;
+    aspect-ratio: unset;
+  }
+}
+
+
 
 
 

@@ -62,6 +62,7 @@ $visibility        = max(0, min(2, $visibility));
 $isPublic          = ($visibility >= 1) ? 1 : 0;
 $project           = !empty($_POST['project']) ? trim($_POST['project']) : null;
 $categoryId        = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
+$isFlick           = !empty($_POST['is_flick']) ? 1 : 0;
 
 // Handle optional custom thumbnail provided once for this batch
 $selectedGalleryThumb = null;
@@ -144,11 +145,11 @@ foreach ($filesToProcess as $file) {
         INSERT INTO assets (
             id, title, slug, description, copyright_info, asset_type, category_id, project,
             file_path, file_name, file_size, mime_type, extension,
-            thumbnail_path, source, visibility, is_public, created_at, updated_at
+            thumbnail_path, source, visibility, is_public, is_flick, created_at, updated_at
         ) VALUES (
             :id, :title, :slug, :desc, :copyright, :type, :cat_id, :proj,
             :path, :filename, :size, :mime, :ext,
-            :thumb, 'web_upload', :visibility, :is_public, NOW(), NOW()
+            :thumb, 'web_upload', :visibility, :is_public, :is_flick, NOW(), NOW()
         )
     ");
 
@@ -169,6 +170,7 @@ foreach ($filesToProcess as $file) {
         ':thumb'      => $thumbRelPath,
         ':visibility' => $visibility,
         ':is_public'  => $isPublic,
+        ':is_flick'   => ($assetType === 'video' ? $isFlick : 0),
     ]);
 
     // Handle tags

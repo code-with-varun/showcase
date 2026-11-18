@@ -44,6 +44,7 @@ $filesToDeploy = [
     '.htaccess',
     'index.php',
     'playlist.php',
+    'flicks.php',
     'watch.php',
     'studio.php',
     'settings.php',

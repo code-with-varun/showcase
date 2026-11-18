@@ -341,6 +341,16 @@ include __DIR__ . '/includes/header.php';
                 </datalist>
               </div>
 
+              <div class="col-md-6 d-flex align-items-center">
+                <div class="form-check form-switch mt-3 pt-1">
+                  <input class="form-check-input" type="checkbox" role="switch" name="is_flick" id="uploadIsFlick" value="1">
+                  <label class="form-check-label fw-bold text-dark small" for="uploadIsFlick">
+                    <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Mark as Flick (Vertical / Shorts Video)
+                  </label>
+                  <div class="form-text text-secondary" style="font-size: 0.74rem;">Portrait 9:16 videos featured in the dedicated Flicks player.</div>
+                </div>
+              </div>
+
               <!-- Thumbnail Selection: Upload Device vs Pick from Gallery -->
               <div class="col-12">
                 <label class="form-label text-secondary small fw-bold d-flex align-items-center justify-content-between mb-2">
@@ -1057,9 +1067,10 @@ Sitemap: <?= $baseUrl ?>/sitemap.xml</textarea>
         <?php foreach ($assetsList as $asset): 
           $isVideo = ($asset['asset_type'] === 'video');
           $isImage = ($asset['asset_type'] === 'image');
+          $isFlick = !empty($asset['is_flick']);
           $rawUrl  = "{$baseUrl}/" . ltrim($asset['file_path'], '/');
           $targetSlug = $asset['slug'] ?: $asset['id'];
-          $watchUrl = "{$baseUrl}/watch/{$targetSlug}";
+          $watchUrl = $isFlick ? "{$baseUrl}/flick/{$targetSlug}" : "{$baseUrl}/watch/{$targetSlug}";
           $streamUrl = "{$baseUrl}/stream/{$targetSlug}";
           $thumb = $asset['thumbnail_path'] ? "{$baseUrl}/" . ltrim($asset['thumbnail_path'], '/') : ($isImage ? $rawUrl : '');
           if (!$thumb) {
@@ -1092,6 +1103,7 @@ Sitemap: <?= $baseUrl ?>/sitemap.xml</textarea>
             'project'        => $asset['project'],
             'duration'       => $asset['duration_seconds'],
             'visibility'     => (int)($asset['visibility'] ?? ($asset['is_public'] ? 2 : 0)),
+            'is_flick'       => $isFlick ? 1 : 0,
             'tags'           => $assetTags,
           ]);
 
@@ -1117,6 +1129,9 @@ Sitemap: <?= $baseUrl ?>/sitemap.xml</textarea>
               <!-- Badges Row -->
               <div class="d-flex flex-wrap gap-1 align-items-center mb-3">
                 <span class="badge bg-light text-dark border small"><?= h($asset['category_name'] ?: 'General') ?></span>
+                <?php if ($isFlick): ?>
+                  <span class="badge bg-warning text-dark border border-warning small"><i class="bi bi-lightning-charge-fill me-1"></i>Flick</span>
+                <?php endif; ?>
                 <?php if (!empty($asset['project'])): ?>
                   <span class="badge bg-primary-subtle text-primary border border-primary-subtle small"><?= h($asset['project']) ?></span>
                 <?php endif; ?>
@@ -1186,15 +1201,22 @@ Sitemap: <?= $baseUrl ?>/sitemap.xml</textarea>
             <?php foreach ($assetsList as $asset): 
               $isVideo = ($asset['asset_type'] === 'video');
               $isImage = ($asset['asset_type'] === 'image');
+              $isFlick = !empty($asset['is_flick']);
               $isDoc   = in_array($asset['asset_type'], ['document', 'archive']) || in_array($asset['extension'], ['pdf', 'zip', 'rar', 'tar', 'gz', 'docx', 'xlsx', 'pptx', 'txt']);
               $rawUrl  = "{$baseUrl}/" . ltrim($asset['file_path'], '/');
               $targetSlug = $asset['slug'] ?: $asset['id'];
               
               // Smart link
               if ($isVideo) {
-                $smartUrl = "{$baseUrl}/watch/{$targetSlug}";
-                $smartLabel = "Watch Video";
-                $smartIcon = "bi-play-circle";
+                if ($isFlick) {
+                  $smartUrl = "{$baseUrl}/flick/{$targetSlug}";
+                  $smartLabel = "Watch Flick";
+                  $smartIcon = "bi-lightning-charge-fill";
+                } else {
+                  $smartUrl = "{$baseUrl}/watch/{$targetSlug}";
+                  $smartLabel = "Watch Video";
+                  $smartIcon = "bi-play-circle";
+                }
               } elseif ($isImage) {
                 $smartUrl = "{$baseUrl}/images";
                 $smartLabel = "View in Images";
@@ -1242,6 +1264,7 @@ Sitemap: <?= $baseUrl ?>/sitemap.xml</textarea>
                 'project'        => $asset['project'],
                 'duration'       => $asset['duration_seconds'],
                 'visibility'     => (int)($asset['visibility'] ?? ($asset['is_public'] ? 2 : 0)),
+                'is_flick'       => $isFlick ? 1 : 0,
                 'tags'           => $assetTags,
               ]);
             ?>
@@ -1258,7 +1281,7 @@ Sitemap: <?= $baseUrl ?>/sitemap.xml</textarea>
                     </a>
                     <div class="min-w-0" style="max-width: 380px;">
                       <a href="<?= $smartUrl ?>" target="_blank" class="fw-bold text-dark text-truncate d-block text-decoration-none hover-danger mb-0" style="font-size: 0.88rem;" title="<?= h($asset['title']) ?>">
-                        <?= h($asset['title']) ?>
+                        <?php if ($isFlick): ?><span class="badge bg-warning text-dark me-1" style="font-size: 0.68rem;"><i class="bi bi-lightning-charge-fill"></i> Flick</span><?php endif; ?><?= h($asset['title']) ?>
                       </a>
                       <div class="text-secondary font-monospace d-flex flex-wrap align-items-center gap-2" style="font-size: 0.72rem;">
                         <span><?= h($asset['file_name']) ?></span>
@@ -1427,6 +1450,16 @@ Sitemap: <?= $baseUrl ?>/sitemap.xml</textarea>
               <div id="editThumbPreview" class="mt-2 d-none p-1 bg-white border rounded text-center">
                 <img src="" alt="Thumbnail Preview" style="max-height: 90px; border-radius: 4px; object-fit: cover;">
               </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" name="is_flick" id="editIsFlick" value="1">
+              <label class="form-check-label fw-bold text-dark small" for="editIsFlick">
+                <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Mark as Flick (Vertical / Shorts Video)
+              </label>
+              <div class="form-text text-secondary" style="font-size: 0.74rem;">Vertical portrait video (9:16) played in the fullscreen swipe-scroll feed.</div>
             </div>
           </div>
 
@@ -1803,6 +1836,10 @@ document.querySelectorAll('.edit-asset-btn').forEach(btn => {
     document.getElementById('editProject').value = asset.project || '';
     document.getElementById('editVisibility').value = String(asset.visibility ?? 2);
     document.getElementById('editTags').value = asset.tags || '';
+    const flickCheckbox = document.getElementById('editIsFlick');
+    if (flickCheckbox) {
+      flickCheckbox.checked = (parseInt(asset.is_flick || 0, 10) === 1);
+    }
 
     const modal = new bootstrap.Modal(document.getElementById('editAssetModal'));
     modal.show();

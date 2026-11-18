@@ -30,12 +30,13 @@ $isAdmin = (function_exists('isAdminLoggedIn') && isAdminLoggedIn());
 $visibilityClause = $isAdmin ? '1=1' : 'visibility = 2';
 $countsStmt = $pdo->query("
     SELECT 
-        SUM(CASE WHEN asset_type = 'video' THEN 1 ELSE 0 END) AS count_videos,
+        SUM(CASE WHEN asset_type = 'video' AND (is_flick = 0 OR is_flick IS NULL) THEN 1 ELSE 0 END) AS count_videos,
+        SUM(CASE WHEN is_flick = 1 THEN 1 ELSE 0 END) AS count_flicks,
         SUM(CASE WHEN asset_type = 'image' THEN 1 ELSE 0 END) AS count_images,
         SUM(CASE WHEN asset_type IN ('document', 'archive') THEN 1 ELSE 0 END) AS count_docs
     FROM assets WHERE $visibilityClause
 ");
-$catCounts = $countsStmt->fetch() ?: ['count_videos' => 0, 'count_images' => 0, 'count_docs' => 0];
+$catCounts = $countsStmt->fetch() ?: ['count_videos' => 0, 'count_flicks' => 0, 'count_images' => 0, 'count_docs' => 0];
 
 // Playlist count
 $plCount = (int)$pdo->query($isAdmin ? "SELECT COUNT(*) FROM playlists" : "SELECT COUNT(*) FROM playlists WHERE visibility = 2")->fetchColumn();
@@ -76,7 +77,7 @@ if ($activeType === 'playlist') {
     $assetsList = [];
 } else {
     if ($activeType === 'video') {
-        $where[] = "a.asset_type = 'video'";
+        $where[] = "a.asset_type = 'video' AND (a.is_flick = 0 OR a.is_flick IS NULL)";
     } elseif ($activeType === 'image') {
         $where[] = "a.asset_type = 'image'";
     } else {
@@ -151,7 +152,7 @@ include __DIR__ . '/includes/header.php';
 
 <div class="container-fluid px-0">
 
-  <!-- Category Navigation Switcher (Videos, Playlists, Images, Documents) -->
+  <!-- Category Navigation Switcher (Videos, Playlists, Flicks, Images, Documents) -->
   <div class="yt-chip-bar mb-4">
     <a href="<?= $baseUrl ?>/videos<?= $searchQ ? '?q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'video') ? 'active' : '' ?>">
       <i class="bi bi-play-circle-fill text-danger me-1"></i> Videos
@@ -161,6 +162,11 @@ include __DIR__ . '/includes/header.php';
     <a href="<?= $baseUrl ?>/playlists<?= $searchQ ? '?q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'playlist') ? 'active' : '' ?>">
       <i class="bi bi-collection-play-fill text-danger me-1"></i> Playlists
       <span class="badge bg-secondary ms-1"><?= (int)$plCount ?></span>
+    </a>
+
+    <a href="<?= $baseUrl ?>/flicks<?= $searchQ ? '?q=' . urlencode($searchQ) : '' ?>" class="yt-chip">
+      <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Flicks
+      <span class="badge bg-danger ms-1"><?= (int)$catCounts['count_flicks'] ?></span>
     </a>
 
     <a href="<?= $baseUrl ?>/images<?= $searchQ ? '?q=' . urlencode($searchQ) : '' ?>" class="yt-chip <?= ($activeType === 'image') ? 'active' : '' ?>">
